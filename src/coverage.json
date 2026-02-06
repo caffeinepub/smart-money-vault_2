@@ -1,0 +1,49 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-06T08:18:13.102Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 3,
+    "implemented": 0,
+    "items": [
+      {
+        "id": "REQ-163",
+        "summary": "In `backend/main.mo`, update/refine the existing `PUBLIC ACTOR API & TYPES (BACKWARD COMPATIBILITY: LEGACY INVENTORY)` comment block so it inventories **all currently exposed public canister methods** and key public types present in the file, and explicitly marks them as “must remain backward compatible” for this micro-step (documentation-only; do not rename/remove methods or types).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-164",
+        "summary": "In `backend/main.mo`, make the backward-compatibility documentation internally consistent by ensuring the comment immediately above the `UserProfile` type explicitly states that the Phase 1 fields `planTier`, `botPublicKey`, and `bot_id` are intentionally OPTIONAL for backward compatibility with previously stored profiles and older frontend calls, and remove/adjust any wording that could be interpreted as those fields being required.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-165",
+        "summary": "In `backend/main.mo`, verify (and if necessary, minimally adjust) any `UserProfile` record literals/constructors so that when a profile is constructed without an explicit bot id, it sets `bot_id = null` explicitly (do not rely on missing-field inference), preserving compatibility for callers that omit `bot_id`.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Frontend-only plan: no changes required for backend-only legacy API documentation micro-step",
+  "requirements": []
+}

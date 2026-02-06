@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --radius: 0.5rem;
+        
+        /* Cupertino Dark - Terminal Aesthetic */
+        --background: 0.04 0 0;
+        --foreground: 0.98 0 0;
+        --card: 0.07 0 0;
+        --card-foreground: 0.98 0 0;
+        --popover: 0.07 0 0;
+        --popover-foreground: 0.98 0 0;
+        --primary: 0.98 0 0;
+        --primary-foreground: 0.04 0 0;
+        --secondary: 0.15 0 0;
+        --secondary-foreground: 0.98 0 0;
+        --muted: 0.15 0 0;
+        --muted-foreground: 0.5 0 0;
+        --accent: 0.15 0 0;
+        --accent-foreground: 0.98 0 0;
+        --destructive: 0.64 0.22 25;
+        --destructive-foreground: 0.98 0 0;
+        --border: 1 0 0 / 5%;
+        --input: 1 0 0 / 10%;
+        --ring: 0.5 0 0;
+        
+        /* Profit/Loss colors - Emerald/Rose */
+        --profit: 0.65 0.15 150;
+        --loss: 0.64 0.22 25;
+    }
+
+    .dark {
+        /* Cupertino Dark - #0A0A0A background, #121212 cards */
+        --background: 0.04 0 0;
+        --foreground: 0.98 0 0;
+        --card: 0.07 0 0;
+        --card-foreground: 0.98 0 0;
+        --popover: 0.07 0 0;
+        --popover-foreground: 0.98 0 0;
+        --primary: 0.98 0 0;
+        --primary-foreground: 0.04 0 0;
+        --secondary: 0.15 0 0;
+        --secondary-foreground: 0.98 0 0;
+        --muted: 0.15 0 0;
+        --muted-foreground: 0.5 0 0;
+        --accent: 0.15 0 0;
+        --accent-foreground: 0.98 0 0;
+        --destructive: 0.64 0.22 25;
+        --destructive-foreground: 0.98 0 0;
+        --border: 1 0 0 / 5%;
+        --input: 1 0 0 / 10%;
+        --ring: 0.5 0 0;
+        
+        /* Profit/Loss colors */
+        --profit: 0.65 0.15 150;
+        --loss: 0.64 0.22 25;
+    }
+
+    * {
+        @apply border-border;
+    }
+    
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+}

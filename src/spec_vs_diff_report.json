@@ -1,0 +1,45 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-06T08:18:13.098Z",
+  "summary": "The diff does not modify `backend/main.mo` and instead only changes `project_state.json`, so none of the requested backend documentation/compatibility updates are evidenced as implemented. The `project_state.json` change also appears unrelated to the micro-step requirements.",
+  "missing_requirements": [
+    {
+      "id": "REQ-163",
+      "requirement": "Update/refine the `PUBLIC ACTOR API & TYPES (BACKWARD COMPATIBILITY: LEGACY INVENTORY)` comment block in `backend/main.mo` to inventory all currently exposed public canister methods and key public types, marking them as backward compatible (documentation-only; no signature/type changes).",
+      "reason": "No changes to `backend/main.mo` are present in the diff summary, so the legacy inventory comment cannot have been updated as required.",
+      "evidence": [
+        "project_state.json (only modified file)"
+      ]
+    },
+    {
+      "id": "REQ-164",
+      "requirement": "Make `UserProfile` backward-compatibility documentation consistent by stating `planTier`, `botPublicKey`, and `bot_id` are intentionally OPTIONAL in the comment immediately above `type UserProfile = { ... }`, removing any contradictory wording.",
+      "reason": "No changes to `backend/main.mo` are present in the diff summary, so the `UserProfile` comment cannot have been updated.",
+      "evidence": [
+        "project_state.json (only modified file)"
+      ]
+    },
+    {
+      "id": "REQ-165",
+      "requirement": "Ensure all `UserProfile` record literals/constructors in `backend/main.mo` explicitly set `bot_id = null` when a bot id is not provided, avoiding missing-field inference.",
+      "reason": "No changes to `backend/main.mo` are present in the diff summary, so any needed `UserProfile` literal adjustments cannot be verified/implemented.",
+      "evidence": [
+        "project_state.json (only modified file)"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Updated project meta/summary describing a different product direction (Dual-Core architecture, off-chain Python bot, Ed25519 verification, stable-memory logging, frontend Cupertino Dashboard upgrades).",
+      "reason": "This change is not requested by REQ-163/164/165, which are specifically limited to backend documentation and minor `UserProfile` literal fixes in `backend/main.mo`, and explicitly list Ed25519 verification and major frontend changes as non-goals.",
+      "evidence": [
+        "project_state.json"
+      ]
+    }
+  ],
+  "confidence": 0.86,
+  "changed_files": [
+    "project_state.json"
+  ]
+}
