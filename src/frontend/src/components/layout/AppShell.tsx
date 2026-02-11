@@ -1,24 +1,63 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useGetCallerUserProfile } from '../../hooks/useCurrentUserProfile';
 import DashboardScreen from '../../screens/DashboardScreen';
 import SettingsScreen from '../../screens/SettingsScreen';
+import SettingsRouteScreen from '../../screens/SettingsRouteScreen';
 import DashboardHeader from '../dashboard/DashboardHeader';
 import { Heart } from 'lucide-react';
 
-type Screen = 'dashboard' | 'settings';
+type Screen = 'dashboard' | 'settings' | 'settings-route';
+
+function getScreenFromPath(): Screen {
+  const path = window.location.pathname;
+  if (path === '/settings') return 'settings-route';
+  if (path === '/dashboard' || path === '/') return 'dashboard';
+  return 'dashboard';
+}
 
 export default function AppShell() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
+  const [currentScreen, setCurrentScreen] = useState<Screen>(getScreenFromPath());
   const { identity } = useInternetIdentity();
   const { data: userProfile } = useGetCallerUserProfile();
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentScreen(getScreenFromPath());
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Navigation handler that updates URL and screen
+  const handleNavigate = (screen: 'dashboard' | 'settings') => {
+    const targetScreen: Screen = screen === 'settings' ? 'settings-route' : 'dashboard';
+    const path = screen === 'settings' ? '/settings' : '/dashboard';
+    
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    setCurrentScreen(targetScreen);
+  };
+
+  // Sync initial URL on mount
+  useEffect(() => {
+    const initialScreen = getScreenFromPath();
+    if (initialScreen !== currentScreen) {
+      setCurrentScreen(initialScreen);
+    }
+  }, []);
+
+  const displayScreen = currentScreen === 'settings-route' ? 'settings' : currentScreen;
 
   return (
     <div className="flex h-screen flex-col bg-[#0A0A0A]">
       {/* Glassmorphism Header */}
       <DashboardHeader
-        currentScreen={currentScreen}
-        onNavigate={setCurrentScreen}
+        currentScreen={displayScreen as 'dashboard' | 'settings'}
+        onNavigate={handleNavigate}
         userProfile={userProfile}
       />
 
@@ -26,6 +65,7 @@ export default function AppShell() {
       <main className="flex-1 overflow-auto">
         {currentScreen === 'dashboard' && <DashboardScreen />}
         {currentScreen === 'settings' && <SettingsScreen />}
+        {currentScreen === 'settings-route' && <SettingsRouteScreen />}
       </main>
 
       {/* Footer */}

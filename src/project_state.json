@@ -1,20 +1,36 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Smart Money Vault project (frontend) with roadmap batches; currently addressing ConnectBotWizardModal Ed25519 key generation bug and adding tweetnacl dependency.",
+  "summary": "Implement a Profile Settings tab in the Settings page with profile fields and persistence via a Motoko canister update_profile method, using React Query mutations with optimistic updates, without changing other settings tabs.",
   "architectural_notes": [
-    "Use tweetnacl (nacl.sign.keyPair()) for Ed25519 key generation so public key is derived from private key; store private key as 64-byte secretKey (seed+pubkey) hex and pass 32-byte publicKey to registerBotPublicKey()."
+    "Do not modify Connections or Subscription tabs while implementing Profile Settings.",
+    "Profile updates are persisted via Motoko canister method update_profile.",
+    "Use React Query mutation with optimistic updates for profile saves."
   ],
-  "known_issues": [
-    "ConnectBotWizardModal Ed25519 keygen is broken: handleGenerateKeypair currently produces two random blobs instead of a valid derived keypair."
-  ],
-  "isFixRequest": true,
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-add-the-tweetnacl-npm-package-as-a-dependency-in-the-frontend-project-update-the-frontend-package-manifest-and-lockfile-as-applicable-so-frontend-typescript-code-can-import-it-e-g-import-nacl-from-tweetnacl",
-      "title": "Add the `tweetnacl` npm package as a dependency in the frontend project (update the frontend package manifest and lockfile as applicable) so frontend TypeScript code can import it (e.g., `import nacl from \"tweetnacl\"`).",
+      "id": "feature-replace-the-placeholder-content-in-the-settings-page-profile-tab-with-a-functional-profile-settings-form-that-includes-1-the-caller-s-current-principal-id-displayed-read-only-2-an-editable-display-name-text-field-3-a-timezone-selector-4-notification-preferences-represented-as-toggle-switches-and-5-a-save-button",
+      "title": "Replace the placeholder content in the Settings page “Profile” tab with a functional Profile Settings form that includes: (1) the caller’s current Principal ID displayed read-only, (2) an editable Display name text field, (3) a Timezone selector, (4) Notification preferences represented as toggle switches, and (5) a Save button.",
       "reqIds": [
         "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-react-query-data-flow-for-profile-settings-load-existing-profile-settings-and-save-changes-via-a-react-query-mutation-that-performs-optimistic-updates-and-properly-rolls-back-on-error",
+      "title": "Implement React Query data flow for Profile Settings: load existing profile settings, and save changes via a React Query mutation that performs optimistic updates and properly rolls back on error.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-do-not-modify-the-settings-page-connections-tab-or-subscription-tab-behavior-content-while-implementing-the-profile-tab-changes",
+      "title": "Do not modify the Settings page Connections tab or Subscription tab behavior/content while implementing the Profile tab changes.",
+      "reqIds": [
+        "REQ-4"
       ],
       "version": 1
     }
@@ -22,13 +38,32 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add tweetnacl dependency to frontend and update ConnectBotWizardModal Ed25519 keygen to use nacl.sign.keyPair() with correct secretKey/publicKey handling.",
+      "summary": "Implement Profile Settings tab: show principal ID (read-only), edit display name, timezone selector, notification toggles, and Save button",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Add/ensure Motoko canister method update_profile to persist profile settings changes",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Use React Query mutation with optimistic updates for saving profile settings",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Add a Motoko canister method named update_profile (if missing) that persists profile settings changes for the caller, including display name, timezone, and notification preferences, and ensure the frontend can call it.",
+      "reqIds": [
+        "REQ-3"
+      ],
       "status": "pending"
     }
   ],
-  "gameProjectType": "none",
-  "projectName": "Smart Money Vault",
+  "projectName": "Implement Profile Settings tab with canister-backed update_profile and optimistic saves",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

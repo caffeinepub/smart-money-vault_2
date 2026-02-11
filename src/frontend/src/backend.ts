@@ -221,7 +221,9 @@ export type BotError = {
     FetchFailed: string;
 };
 export interface UserProfile {
+    timezone?: string;
     botPublicKey?: Uint8Array;
+    notificationsEnabled: boolean;
     accountId?: string;
     name: string;
     bot_id?: string;
@@ -285,6 +287,7 @@ export interface backendInterface {
     submitTrade(trade: Trade, signature: Uint8Array, nonce: string, timestamp: Time): Promise<void>;
     toggle_uplink(state: boolean): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
+    update_profile(profile: UserProfile): Promise<void>;
 }
 import type { AccountId as _AccountId, BotError as _BotError, BotProfile as _BotProfile, Error as _Error, HeartbeatData as _HeartbeatData, JwtToken as _JwtToken, License as _License, Result as _Result, Result_1 as _Result_1, Result_2 as _Result_2, Signal as _Signal, SignalFetchResult as _SignalFetchResult, Status as _Status, StrategicVault as _StrategicVault, Strategy as _Strategy, StrategyBundle as _StrategyBundle, StrategyPath as _StrategyPath, Symbol as _Symbol, Time as _Time, Trade as _Trade, TradeSide as _TradeSide, UplinkStatus as _UplinkStatus, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -639,6 +642,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async update_profile(arg0: UserProfile): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.update_profile(to_candid_UserProfile_n42(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.update_profile(to_candid_UserProfile_n42(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
 }
 function from_candid_BotError_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BotError): BotError {
     return from_candid_variant_n12(_uploadFile, _downloadFile, value);
@@ -770,7 +787,9 @@ function from_candid_record_n20(_uploadFile: (file: ExternalBlob) => Promise<Uin
     };
 }
 function from_candid_record_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    timezone: [] | [string];
     botPublicKey: [] | [Uint8Array];
+    notificationsEnabled: boolean;
     accountId: [] | [string];
     name: string;
     bot_id: [] | [string];
@@ -782,14 +801,18 @@ function from_candid_record_n25(_uploadFile: (file: ExternalBlob) => Promise<Uin
             Whale: null;
         }];
 }): {
+    timezone?: string;
     botPublicKey?: Uint8Array;
+    notificationsEnabled: boolean;
     accountId?: string;
     name: string;
     bot_id?: string;
     planTier?: Variant_Pro_Free_Whale;
 } {
     return {
+        timezone: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.timezone)),
         botPublicKey: record_opt_to_undefined(from_candid_opt_n21(_uploadFile, _downloadFile, value.botPublicKey)),
+        notificationsEnabled: value.notificationsEnabled,
         accountId: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.accountId)),
         name: value.name,
         bot_id: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.bot_id)),
@@ -1149,13 +1172,17 @@ function to_candid_opt_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Arr
     return value === null ? candid_none() : candid_some(value);
 }
 function to_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    timezone?: string;
     botPublicKey?: Uint8Array;
+    notificationsEnabled: boolean;
     accountId?: string;
     name: string;
     bot_id?: string;
     planTier?: Variant_Pro_Free_Whale;
 }): {
+    timezone: [] | [string];
     botPublicKey: [] | [Uint8Array];
+    notificationsEnabled: boolean;
     accountId: [] | [string];
     name: string;
     bot_id: [] | [string];
@@ -1168,7 +1195,9 @@ function to_candid_record_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         }];
 } {
     return {
+        timezone: value.timezone ? candid_some(value.timezone) : candid_none(),
         botPublicKey: value.botPublicKey ? candid_some(value.botPublicKey) : candid_none(),
+        notificationsEnabled: value.notificationsEnabled,
         accountId: value.accountId ? candid_some(value.accountId) : candid_none(),
         name: value.name,
         bot_id: value.bot_id ? candid_some(value.bot_id) : candid_none(),

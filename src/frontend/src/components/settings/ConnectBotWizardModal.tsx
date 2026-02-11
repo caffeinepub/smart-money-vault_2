@@ -8,6 +8,7 @@ import { useLinkBotPublicKey } from '../../hooks/useLinkBotPublicKey';
 import { useSetBotUrl } from '../../hooks/useSetBotUrl';
 import { Key, Copy, CheckCircle2, AlertTriangle, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { bytesToHex } from '../../utils/encoding';
 
 interface ConnectBotWizardModalProps {
   open: boolean;
@@ -28,17 +29,37 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
 
   const handleGenerateKeypair = async () => {
     try {
-      // Use Web Crypto API to generate Ed25519-like keypair
-      // Note: For production, consider using tweetnacl-js or similar
-      const privateKey = new Uint8Array(32);
-      crypto.getRandomValues(privateKey);
+      // Generate a real Ed25519 keypair using Web Crypto API
+      const cryptoKeyPair = await window.crypto.subtle.generateKey(
+        {
+          name: 'Ed25519',
+          namedCurve: 'Ed25519',
+        } as any,
+        true,
+        ['sign', 'verify']
+      );
+
+      // Export the public key (32 bytes)
+      const publicKeyBuffer = await window.crypto.subtle.exportKey('raw', cryptoKeyPair.publicKey);
+      const publicKey = new Uint8Array(publicKeyBuffer);
+
+      // Export the private key in PKCS8 format, then extract the raw 32-byte seed
+      const privateKeyBuffer = await window.crypto.subtle.exportKey('pkcs8', cryptoKeyPair.privateKey);
+      const privateKeyBytes = new Uint8Array(privateKeyBuffer);
       
-      const publicKey = new Uint8Array(32);
-      crypto.getRandomValues(publicKey);
+      // PKCS8 format for Ed25519: the last 32 bytes are the seed, preceded by the public key
+      // For Ed25519, we need to extract the 32-byte seed from the PKCS8 structure
+      // The seed is at a specific offset in the PKCS8 DER encoding
+      const seedOffset = privateKeyBytes.length - 64; // Last 64 bytes contain seed (32) + public key (32)
+      const seed = privateKeyBytes.slice(seedOffset, seedOffset + 32);
       
-      const privateKeyHex = Array.from(privateKey)
-        .map((b: number) => b.toString(16).padStart(2, '0'))
-        .join('');
+      // Create a 64-byte private key by concatenating seed + public key (Ed25519 convention)
+      const privateKeyFull = new Uint8Array(64);
+      privateKeyFull.set(seed, 0);
+      privateKeyFull.set(publicKey, 32);
+      
+      // Convert to hex string (128 characters for 64 bytes)
+      const privateKeyHex = bytesToHex(privateKeyFull);
       
       setKeypair({ publicKey, privateKey: privateKeyHex });
       setStep('reveal');

@@ -22,6 +22,8 @@ export default function ProfileSetupModal() {
       planTier: undefined,
       botPublicKey: undefined,
       bot_id: undefined,
+      timezone: undefined,
+      notificationsEnabled: true,
     };
 
     await saveProfile.mutateAsync(profile);

@@ -120,7 +120,9 @@ export interface TransformationOutput {
 export type UplinkStatus = { 'EXECUTE' : null } |
   { 'STANDBY' : null };
 export interface UserProfile {
+  'timezone' : [] | [string],
   'botPublicKey' : [] | [Uint8Array],
+  'notificationsEnabled' : boolean,
   'accountId' : [] | [string],
   'name' : string,
   'bot_id' : [] | [string],
@@ -167,6 +169,7 @@ export interface _SERVICE {
   'submitTrade' : ActorMethod<[Trade, Uint8Array, string, Time], undefined>,
   'toggle_uplink' : ActorMethod<[boolean], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'update_profile' : ActorMethod<[UserProfile], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

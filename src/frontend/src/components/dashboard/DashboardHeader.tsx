@@ -9,6 +9,14 @@ interface DashboardHeaderProps {
 }
 
 export default function DashboardHeader({ currentScreen, onNavigate, userProfile }: DashboardHeaderProps) {
+  const handleDashboardClick = () => {
+    onNavigate('dashboard');
+  };
+
+  const handleSettingsClick = () => {
+    onNavigate('settings');
+  };
+
   return (
     <header className="border-b border-white/5 bg-[#121212]/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-6">
@@ -18,7 +26,7 @@ export default function DashboardHeader({ currentScreen, onNavigate, userProfile
           </h1>
           <nav className="flex space-x-1">
             <button
-              onClick={() => onNavigate('dashboard')}
+              onClick={handleDashboardClick}
               className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 currentScreen === 'dashboard'
                   ? 'bg-white/10 text-white'
@@ -29,7 +37,7 @@ export default function DashboardHeader({ currentScreen, onNavigate, userProfile
               <span>Dashboard</span>
             </button>
             <button
-              onClick={() => onNavigate('settings')}
+              onClick={handleSettingsClick}
               className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 currentScreen === 'settings'
                   ? 'bg-white/10 text-white'

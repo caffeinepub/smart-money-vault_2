@@ -1,39 +1,45 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-11T03:26:15.634Z",
-  "summary": "REQ-1 (add tweetnacl as a frontend dependency via package manifest/lockfile) is not evidenced in the provided diff summary. The diff shows an added TS smoke-test utility and updates to summary/state files, but no package.json or lockfile changes. There are also extra/unrequested changes (e.g., a tweetnacl smoke test file and project state notes about changing Ed25519 keygen, which is explicitly a non-goal).",
+  "generatedAt": "2026-02-11T04:20:23.775Z",
+  "summary": "Profile Settings UI and React Query hooks were added, including optimistic update/rollback behavior. However, the diff summary does not provide evidence that the backend actually exports a public shared `update_profile` method or that the Candid/actor interface was updated to support it. Some additional changes (migration module and updating the profile setup modal to include new fields) appear beyond the explicit frontend Profile tab scope.",
   "missing_requirements": [
     {
-      "id": "REQ-1",
-      "requirement": "Add the `tweetnacl` npm package as a dependency in the frontend project (update the frontend package manifest and lockfile as applicable) so frontend TypeScript code can import it.",
-      "reason": "The diff summary does not show any changes to the frontend package manifest (e.g., package.json) or any lockfile, which are required to actually add an npm dependency. Only a new TS utility file and documentation/state-like files are shown.",
+      "id": "REQ-3",
+      "requirement": "Add a Motoko canister method named update_profile that persists profile settings changes for the caller (display name, timezone, notification preferences) and update the Candid interface so the frontend can call it.",
+      "reason": "The frontend mutation calls `actor.update_profile(profile)` (hook added), but the provided `backend/main.mo` diff excerpt does not show any `public shared` method named `update_profile`, nor any explicit Candid/interface update evidence in the diff summary.",
       "evidence": [
-        "<file-diff>: MODIFIED FILES list does not include frontend/package.json or any lockfile",
-        "frontend/src/utils/tweetnaclSmokeTest.ts (added, but dependency addition not shown)"
+        "frontend/src/hooks/useProfileSettings.ts",
+        "backend/main.mo (truncated excerpt does not show update_profile)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Added a new tweetnacl smoke-test utility file in frontend source.",
-      "reason": "REQ-1 only asks to add the npm dependency (manifest + lockfile). Adding a new source file is not requested by the BuildRequest (though it may be intended to validate the import).",
+      "description": "Added stable-state migration module and applied upgrade migration wiring.",
+      "reason": "The BuildRequest allows adding `migration.mo` only if required for a stable-state upgrade, but it was not explicitly requested as a requirement. The diff adds `backend/migration.mo` and applies it via `(with migration = Migration.run)` in `backend/main.mo`.",
       "evidence": [
-        "frontend/src/utils/tweetnaclSmokeTest.ts"
+        "backend/migration.mo",
+        "backend/main.mo"
       ]
     },
     {
-      "description": "Project state update describing/adding a request to change ConnectBotWizardModal Ed25519 key generation to use tweetnacl (explicitly a non-goal).",
-      "reason": "The BuildRequest explicitly states: \"Do not change Ed25519 key generation logic in ConnectBotWizardModal as part of this request.\" Even if code wasn’t changed here, the diff includes new feature request/state content advocating that change.",
+      "description": "Extended the Profile setup modal to include timezone and notificationsEnabled defaults in the created UserProfile.",
+      "reason": "The BuildRequest focuses on implementing the Settings page Profile tab and canister-backed updates; it does not request changes to the first-time profile setup modal.",
       "evidence": [
-        "project_state.json (AR-1 summary and architectural_notes about using nacl.sign.keyPair for Ed25519 key generation)"
+        "frontend/src/components/auth/ProfileSetupModal.tsx"
       ]
     }
   ],
-  "confidence": 0.78,
+  "confidence": 0.66,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/utils/tweetnaclSmokeTest.ts",
+    "frontend/src/components/auth/ProfileSetupModal.tsx",
+    "frontend/src/components/settings/ProfileSettingsForm.tsx",
+    "frontend/src/hooks/useProfileSettings.ts",
+    "frontend/src/screens/SettingsRouteScreen.tsx",
     "project_state.json"
   ]
 }

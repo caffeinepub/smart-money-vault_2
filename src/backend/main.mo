@@ -24,15 +24,17 @@ import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
 import Int "mo:core/Int";
+import Float "mo:core/Float";
 import Blob "mo:core/Blob";
 import OutCall "http-outcalls/outcall";
+import Migration "migration";
 
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
 // Apply migration logic during upgrades
-
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -44,13 +46,15 @@ actor {
   //   - Fields planTier, botPublicKey, and bot_id are intentionally OPTIONAL for compatibility
   //   - Type definition and all callers MUST continue accepting/skipping these fields per legacy usage patterns
   //
-  type UserProfile = {
+  public type UserProfile = {
     name : Text;
     accountId : ?Text;
     planTier : ?{ #Free; #Pro; #Whale };
     botPublicKey : ?Blob;
     // IMPORTANT: bot_id remains optional for backward compatibility
     bot_id : ?Text;
+    timezone : ?Text;
+    notificationsEnabled : Bool;
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
@@ -168,6 +172,13 @@ actor {
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
+    };
+    userProfiles.add(caller, profile);
+  };
+
+  public shared ({ caller }) func update_profile(profile : UserProfile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update profiles");
     };
     userProfiles.add(caller, profile);
   };

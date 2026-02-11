@@ -139,7 +139,9 @@ export type BotError = {
     FetchFailed: string;
 };
 export interface UserProfile {
+    timezone?: string;
     botPublicKey?: Uint8Array;
+    notificationsEnabled: boolean;
     accountId?: string;
     name: string;
     bot_id?: string;
@@ -202,4 +204,5 @@ export interface backendInterface {
     submitTrade(trade: Trade, signature: Uint8Array, nonce: string, timestamp: Time): Promise<void>;
     toggle_uplink(state: boolean): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
+    update_profile(profile: UserProfile): Promise<void>;
 }

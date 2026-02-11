@@ -54,7 +54,9 @@ export const BotProfile = IDL.Record({
   'cyclesWarning' : IDL.Bool,
 });
 export const UserProfile = IDL.Record({
+  'timezone' : IDL.Opt(IDL.Text),
   'botPublicKey' : IDL.Opt(IDL.Vec(IDL.Nat8)),
+  'notificationsEnabled' : IDL.Bool,
   'accountId' : IDL.Opt(IDL.Text),
   'name' : IDL.Text,
   'bot_id' : IDL.Opt(IDL.Text),
@@ -195,6 +197,7 @@ export const idlService = IDL.Service({
       [TransformationOutput],
       ['query'],
     ),
+  'update_profile' : IDL.Func([UserProfile], [], []),
 });
 
 export const idlInitArgs = [];
@@ -246,7 +249,9 @@ export const idlFactory = ({ IDL }) => {
     'cyclesWarning' : IDL.Bool,
   });
   const UserProfile = IDL.Record({
+    'timezone' : IDL.Opt(IDL.Text),
     'botPublicKey' : IDL.Opt(IDL.Vec(IDL.Nat8)),
+    'notificationsEnabled' : IDL.Bool,
     'accountId' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
     'bot_id' : IDL.Opt(IDL.Text),
@@ -386,6 +391,7 @@ export const idlFactory = ({ IDL }) => {
         [TransformationOutput],
         ['query'],
       ),
+    'update_profile' : IDL.Func([UserProfile], [], []),
   });
 };
 
