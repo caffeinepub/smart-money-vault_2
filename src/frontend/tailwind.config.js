@@ -28,6 +28,7 @@ export default {
                     'sans-serif'
                 ],
                 mono: [
+                    'JetBrains Mono',
                     'SF Mono',
                     'Monaco',
                     'Inconsolata',
@@ -80,7 +81,8 @@ export default {
                 sm: 'calc(var(--radius) - 4px)'
             },
             boxShadow: {
-                xs: '0 1px 2px 0 rgba(0,0,0,0.05)'
+                xs: '0 1px 2px 0 rgba(0,0,0,0.05)',
+                glow: '0 0 30px rgba(52,211,153,0.3)',
             },
             keyframes: {
                 'accordion-down': {

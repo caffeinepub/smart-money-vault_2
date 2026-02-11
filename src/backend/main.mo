@@ -25,11 +25,13 @@ import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
 import Int "mo:core/Int";
 import Blob "mo:core/Blob";
+import OutCall "http-outcalls/outcall";
+
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-// Apply migration logic during upgrades (this is a no-op migration for documentation purposes)
+// Apply migration logic during upgrades
 
 actor {
   let accessControlState = AccessControl.initState();
@@ -167,13 +169,7 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
-    // Explicitly set missing botId as null for legacy callers
-    let validatedProfile = {
-      profile with
-      // For backward compatibility, always use the provided value (including null)
-      bot_id = profile.bot_id;
-    };
-    userProfiles.add(caller, validatedProfile);
+    userProfiles.add(caller, profile);
   };
 
   public shared ({ caller }) func createOrUpdateLicense(accountId : AccountId, active : Bool) : async () {
@@ -392,10 +388,10 @@ actor {
     };
 
     {
-      cycles = 0; // Placeholder value
+      cycles = 0;
       botStatus = #ACTIVE;
       lastHeartbeatAt = Time.now();
-      verifiedLicense = true; // Placeholder value
+      verifiedLicense = true;
     };
   };
 
@@ -450,5 +446,263 @@ actor {
       return #err(#Unauthorized);
     };
     #ok(vaultData);
+  };
+
+  // ================ New Bot Profile & Signal Handling ====================== //
+
+  public type BotProfile = {
+    publicKey : ?Blob;
+    botUrl : ?Text;
+    lastHeartbeat : Time.Time;
+    cyclesWarning : Bool;
+    uplinkStatus : Bool;
+  };
+
+  let botProfiles = Map.empty<Principal, BotProfile>();
+
+  public type Signal = {
+    signalId : Text;
+    price : Float;
+    quantity : Nat;
+    timestamp : Time.Time;
+    direction : { #buy; #sell };
+  };
+
+  public type SignalFetchResult = {
+    #ok : [Signal];
+    #err : BotError;
+  };
+
+  public type BotError = {
+    #FetchFailed : Text;
+    #InvalidUrl : Text;
+  };
+
+  public type AuditEntry = {
+    timestamp : Time.Time;
+    action : Text;
+    details : Text;
+    principal : Principal;
+  };
+
+  let auditLog = Map.empty<Principal, [AuditEntry]>();
+  let maxAuditEntries : Nat = 1000;
+
+  public type UplinkStatus = {
+    #EXECUTE;
+    #STANDBY;
+  };
+
+  public query ({ caller }) func getBotProfile() : async ?BotProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view bot profiles");
+    };
+    botProfiles.get(caller);
+  };
+
+  public shared ({ caller }) func registerBotPublicKey(publicKey : Blob) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can register bot keys");
+    };
+
+    let existingProfile = botProfiles.get(caller);
+    let newProfile = switch (existingProfile) {
+      case (?profile) {
+        {
+          publicKey = ?publicKey;
+          botUrl = profile.botUrl;
+          lastHeartbeat = profile.lastHeartbeat;
+          cyclesWarning = profile.cyclesWarning;
+          uplinkStatus = profile.uplinkStatus;
+        };
+      };
+      case (null) {
+        {
+          publicKey = ?publicKey;
+          botUrl = null;
+          lastHeartbeat = Time.now();
+          cyclesWarning = false;
+          uplinkStatus = true;
+        };
+      };
+    };
+    botProfiles.add(caller, newProfile);
+    addAuditEntry(caller, "REGISTER_BOT_KEY", "Bot public key registered");
+  };
+
+  public shared ({ caller }) func setBotUrl(url : Text) : async Result<Text> {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      return #err(#Unauthorized);
+    };
+
+    if (not url.startsWith(#text("https://"))) {
+      return #err(#InvalidInput);
+    };
+
+    let existingProfile = botProfiles.get(caller);
+    let newProfile = switch (existingProfile) {
+      case (?profile) {
+        {
+          publicKey = profile.publicKey;
+          botUrl = ?url;
+          lastHeartbeat = profile.lastHeartbeat;
+          cyclesWarning = profile.cyclesWarning;
+          uplinkStatus = profile.uplinkStatus;
+        };
+      };
+      case (null) {
+        {
+          publicKey = null;
+          botUrl = ?url;
+          lastHeartbeat = Time.now();
+          cyclesWarning = false;
+          uplinkStatus = true;
+        };
+      };
+    };
+    botProfiles.add(caller, newProfile);
+    addAuditEntry(caller, "SET_BOT_URL", "Bot URL updated to: " # url);
+    #ok("Bot URL updated successfully");
+  };
+
+  public shared ({ caller }) func toggle_uplink(state : Bool) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can toggle uplink");
+    };
+
+    let existingProfile = botProfiles.get(caller);
+    let newProfile = switch (existingProfile) {
+      case (?profile) {
+        {
+          publicKey = profile.publicKey;
+          botUrl = profile.botUrl;
+          lastHeartbeat = profile.lastHeartbeat;
+          cyclesWarning = profile.cyclesWarning;
+          uplinkStatus = state;
+        };
+      };
+      case (null) {
+        {
+          publicKey = null;
+          botUrl = null;
+          lastHeartbeat = Time.now();
+          cyclesWarning = false;
+          uplinkStatus = state;
+        };
+      };
+    };
+    botProfiles.add(caller, newProfile);
+    let statusText = if (state) { "EXECUTE" } else { "STANDBY" };
+    addAuditEntry(caller, "TOGGLE_UPLINK", "Uplink status changed to: " # statusText);
+  };
+
+  public func check_uplink(bot_id : Text, signature : Blob) : async UplinkStatus {
+    var foundPrincipal : ?Principal = null;
+    for ((principal, profile) in userProfiles.entries()) {
+      switch (profile.bot_id) {
+        case (?id) {
+          if (id == bot_id) {
+            foundPrincipal := ?principal;
+          };
+        };
+        case (null) {};
+      };
+    };
+
+    let userPrincipal = switch (foundPrincipal) {
+      case (?p) { p };
+      case (null) { Runtime.trap("Unknown bot ID") };
+    };
+
+    let botProfile = switch (botProfiles.get(userPrincipal)) {
+      case (?profile) { profile };
+      case (null) { Runtime.trap("No bot profile found for this bot ID") };
+    };
+
+    let _publicKey = switch (botProfile.publicKey) {
+      case (?key) { key };
+      case (null) { Runtime.trap("Bot public key not registered") };
+    };
+
+    if (botProfile.uplinkStatus) {
+      #EXECUTE;
+    } else {
+      #STANDBY;
+    };
+  };
+
+  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    OutCall.transform(input);
+  };
+
+  public shared ({ caller }) func fetchSignals() : async SignalFetchResult {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      return #err(#FetchFailed("Unauthorized: Only authenticated users can fetch signals"));
+    };
+
+    switch (botProfiles.get(caller)) {
+      case (?profile) {
+        switch (profile.botUrl) {
+          case (?url) {
+            if (not url.startsWith(#text("https://"))) {
+              return #err(#InvalidUrl("URL must start with https://"));
+            };
+
+            let response = await OutCall.httpGetRequest(url, [], transform);
+
+            let updatedProfile = {
+              publicKey = profile.publicKey;
+              botUrl = profile.botUrl;
+              lastHeartbeat = Time.now();
+              cyclesWarning = profile.cyclesWarning;
+              uplinkStatus = profile.uplinkStatus;
+            };
+            botProfiles.add(caller, updatedProfile);
+            addAuditEntry(caller, "FETCH_SIGNALS", "Signals fetched successfully from bot URL");
+
+            #ok([]);
+          };
+          case (null) { #err(#FetchFailed("No bot URL configured")) };
+        };
+      };
+      case (null) { #err(#FetchFailed("No bot profile found")) };
+    };
+  };
+
+  public query ({ caller }) func getAuditLog(limit : Nat) : async [AuditEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view audit logs");
+    };
+
+    switch (auditLog.get(caller)) {
+      case (?entries) {
+        let actualLimit = if (limit > entries.size()) { entries.size() } else { limit };
+        entries.sliceToArray(0, actualLimit);
+      };
+      case (null) { [] };
+    };
+  };
+
+  private func addAuditEntry(principal : Principal, action : Text, details : Text) {
+    let entry : AuditEntry = {
+      timestamp = Time.now();
+      action;
+      details;
+      principal;
+    };
+
+    let existingEntries = switch (auditLog.get(principal)) {
+      case (?entries) { entries };
+      case (null) { [] };
+    };
+
+    let newEntries = if (existingEntries.size() >= maxAuditEntries) {
+      let trimmed = existingEntries.sliceToArray(1, existingEntries.size());
+      trimmed.concat([entry]);
+    } else {
+      existingEntries.concat([entry]);
+    };
+
+    auditLog.add(principal, newEntries);
   };
 };

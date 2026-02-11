@@ -1,6 +1,47 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Frontend-only plan: no changes required for backend-only legacy API documentation micro-step",
-  "requirements": []
+  "title": "Add tweetnacl dependency to frontend",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Add tweetnacl as a frontend dependency and ensure TypeScript can import it during production builds.",
+      "acceptanceCriteria": [
+        "Frontend dependencies include `tweetnacl` (listed under dependencies in the frontend package manifest).",
+        "A production frontend build succeeds with a simple `import nacl from \"tweetnacl\"` usage (no missing-module errors)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/package.json",
+          "operation": "create",
+          "description": "Create or update the frontend npm package manifest to include `tweetnacl` under `dependencies` so TypeScript/React code can import it. If a manifest already exists elsewhere in the frontend workspace, modify that instead and keep this file in sync with the project’s actual package root."
+        },
+        {
+          "path": "frontend/package-lock.json",
+          "operation": "modify",
+          "description": "Update the frontend lockfile (npm) to reflect adding `tweetnacl`, if this project uses npm. If the project uses a different package manager, update the applicable lockfile instead and avoid creating conflicting lockfiles."
+        },
+        {
+          "path": "frontend/pnpm-lock.yaml",
+          "operation": "modify",
+          "description": "Update the frontend lockfile (pnpm) to reflect adding `tweetnacl`, if this project uses pnpm. If the project uses a different package manager, update the applicable lockfile instead and avoid creating conflicting lockfiles."
+        },
+        {
+          "path": "frontend/yarn.lock",
+          "operation": "modify",
+          "description": "Update the frontend lockfile (Yarn) to reflect adding `tweetnacl`, if this project uses Yarn. If the project uses a different package manager, update the applicable lockfile instead and avoid creating conflicting lockfiles."
+        },
+        {
+          "path": "frontend/src/utils/tweetnaclSmokeTest.ts",
+          "operation": "create",
+          "description": "Add a small TypeScript module that imports `tweetnacl` (e.g., default import) and exports a tiny helper/constant so the dependency is exercised by the compiler during builds."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Import the `tweetnacl` smoke-test module (or directly import `tweetnacl`) in a non-immutable file to ensure a production build includes and validates module resolution, without changing any Ed25519 key generation logic or touching immutable hook paths."
+        }
+      ]
+    }
+  ]
 }

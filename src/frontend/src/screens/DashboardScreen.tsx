@@ -1,24 +1,31 @@
-import SystemHeartbeatCard from '../components/dashboard/SystemHeartbeatCard';
-import EquityCurvePanel from '../components/dashboard/EquityCurvePanel';
-import LiveLogsPanel from '../components/dashboard/LiveLogsPanel';
+import UplinkControllerCard from '../components/dashboard/UplinkControllerCard';
+import LivePulseTerminal from '../components/dashboard/LivePulseTerminal';
+import PerformanceTelemetryPanel from '../components/dashboard/PerformanceTelemetryPanel';
+import AuditLedgerPanel from '../components/dashboard/AuditLedgerPanel';
 
 export default function DashboardScreen() {
   return (
     <div className="p-6">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Top Left - System Heartbeat */}
+      {/* Bento Grid Layout */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Top Left - Uplink Controller (Hero) */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <SystemHeartbeatCard />
+          <UplinkControllerCard />
         </div>
 
-        {/* Top Right - Equity Curve */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-          <EquityCurvePanel />
+        {/* Top Right - Live Pulse Terminal */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 lg:col-span-2">
+          <LivePulseTerminal />
         </div>
 
-        {/* Bottom Wide - Live Logs */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 lg:col-span-2">
-          <LiveLogsPanel />
+        {/* Middle Wide - Performance Telemetry */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 lg:col-span-3">
+          <PerformanceTelemetryPanel />
+        </div>
+
+        {/* Bottom Wide - Audit Ledger */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 lg:col-span-3">
+          <AuditLedgerPanel />
         </div>
       </div>
     </div>

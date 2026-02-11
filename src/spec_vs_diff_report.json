@@ -1,45 +1,39 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-06T08:18:13.098Z",
-  "summary": "The diff does not modify `backend/main.mo` and instead only changes `project_state.json`, so none of the requested backend documentation/compatibility updates are evidenced as implemented. The `project_state.json` change also appears unrelated to the micro-step requirements.",
+  "generatedAt": "2026-02-11T03:26:15.634Z",
+  "summary": "REQ-1 (add tweetnacl as a frontend dependency via package manifest/lockfile) is not evidenced in the provided diff summary. The diff shows an added TS smoke-test utility and updates to summary/state files, but no package.json or lockfile changes. There are also extra/unrequested changes (e.g., a tweetnacl smoke test file and project state notes about changing Ed25519 keygen, which is explicitly a non-goal).",
   "missing_requirements": [
     {
-      "id": "REQ-163",
-      "requirement": "Update/refine the `PUBLIC ACTOR API & TYPES (BACKWARD COMPATIBILITY: LEGACY INVENTORY)` comment block in `backend/main.mo` to inventory all currently exposed public canister methods and key public types, marking them as backward compatible (documentation-only; no signature/type changes).",
-      "reason": "No changes to `backend/main.mo` are present in the diff summary, so the legacy inventory comment cannot have been updated as required.",
+      "id": "REQ-1",
+      "requirement": "Add the `tweetnacl` npm package as a dependency in the frontend project (update the frontend package manifest and lockfile as applicable) so frontend TypeScript code can import it.",
+      "reason": "The diff summary does not show any changes to the frontend package manifest (e.g., package.json) or any lockfile, which are required to actually add an npm dependency. Only a new TS utility file and documentation/state-like files are shown.",
       "evidence": [
-        "project_state.json (only modified file)"
-      ]
-    },
-    {
-      "id": "REQ-164",
-      "requirement": "Make `UserProfile` backward-compatibility documentation consistent by stating `planTier`, `botPublicKey`, and `bot_id` are intentionally OPTIONAL in the comment immediately above `type UserProfile = { ... }`, removing any contradictory wording.",
-      "reason": "No changes to `backend/main.mo` are present in the diff summary, so the `UserProfile` comment cannot have been updated.",
-      "evidence": [
-        "project_state.json (only modified file)"
-      ]
-    },
-    {
-      "id": "REQ-165",
-      "requirement": "Ensure all `UserProfile` record literals/constructors in `backend/main.mo` explicitly set `bot_id = null` when a bot id is not provided, avoiding missing-field inference.",
-      "reason": "No changes to `backend/main.mo` are present in the diff summary, so any needed `UserProfile` literal adjustments cannot be verified/implemented.",
-      "evidence": [
-        "project_state.json (only modified file)"
+        "<file-diff>: MODIFIED FILES list does not include frontend/package.json or any lockfile",
+        "frontend/src/utils/tweetnaclSmokeTest.ts (added, but dependency addition not shown)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Updated project meta/summary describing a different product direction (Dual-Core architecture, off-chain Python bot, Ed25519 verification, stable-memory logging, frontend Cupertino Dashboard upgrades).",
-      "reason": "This change is not requested by REQ-163/164/165, which are specifically limited to backend documentation and minor `UserProfile` literal fixes in `backend/main.mo`, and explicitly list Ed25519 verification and major frontend changes as non-goals.",
+      "description": "Added a new tweetnacl smoke-test utility file in frontend source.",
+      "reason": "REQ-1 only asks to add the npm dependency (manifest + lockfile). Adding a new source file is not requested by the BuildRequest (though it may be intended to validate the import).",
       "evidence": [
-        "project_state.json"
+        "frontend/src/utils/tweetnaclSmokeTest.ts"
+      ]
+    },
+    {
+      "description": "Project state update describing/adding a request to change ConnectBotWizardModal Ed25519 key generation to use tweetnacl (explicitly a non-goal).",
+      "reason": "The BuildRequest explicitly states: \"Do not change Ed25519 key generation logic in ConnectBotWizardModal as part of this request.\" Even if code wasn’t changed here, the diff includes new feature request/state content advocating that change.",
+      "evidence": [
+        "project_state.json (AR-1 summary and architectural_notes about using nacl.sign.keyPair for Ed25519 key generation)"
       ]
     }
   ],
-  "confidence": 0.86,
+  "confidence": 0.78,
   "changed_files": [
+    "frontend-file-summaries.txt",
+    "frontend/src/utils/tweetnaclSmokeTest.ts",
     "project_state.json"
   ]
 }

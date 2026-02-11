@@ -1,4 +1,25 @@
 {
   "kind": "feature_evidence_report",
-  "features": []
+  "features": [
+    {
+      "featureId": "feature-add-the-tweetnacl-npm-package-as-a-dependency-in-the-frontend-project-update-the-frontend-package-manifest-and-lockfile-as-applicable-so-frontend-typescript-code-can-import-it-e-g-import-nacl-from-tweetnacl",
+      "featureTitle": "Add the `tweetnacl` npm package as a dependency in the frontend project (update the frontend package manifest and lockfile as applicable) so frontend TypeScript code can import it (e.g., `import nacl from \"tweetnacl\"`).",
+      "files": [
+        "frontend/src/utils/tweetnaclSmokeTest.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    }
+  ]
 }

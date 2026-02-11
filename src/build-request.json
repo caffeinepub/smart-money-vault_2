@@ -1,74 +1,45 @@
 {
   "kind": "build_request",
-  "title": "Backend micro-step: make legacy API inventory complete and UserProfile optional-field documentation consistent",
+  "title": "Add tweetnacl dependency to frontend",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-163",
-      "text": "In `backend/main.mo`, update/refine the existing `PUBLIC ACTOR API & TYPES (BACKWARD COMPATIBILITY: LEGACY INVENTORY)` comment block so it inventories **all currently exposed public canister methods** and key public types present in the file, and explicitly marks them as “must remain backward compatible” for this micro-step (documentation-only; do not rename/remove methods or types).",
-      "target": "backend",
+      "id": "REQ-1",
+      "text": "Add the `tweetnacl` npm package as a dependency in the frontend project (update the frontend package manifest and lockfile as applicable) so frontend TypeScript code can import it (e.g., `import nacl from \"tweetnacl\"`).",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-8"
         ],
         "quotes": [
-          "In `backend/main.mo`, update/refine the existing “PUBLIC ACTOR API & TYPES (BACKWARD COMPATIBILITY: LEGACY INVENTORY)” comment block so it inventories **all currently exposed public canister methods** and key public types present in the file, and explicitly marks them as “must remain backward compatible” for this micro-step (documentation-only; do not rename/remove methods or types)."
+          "Add tweetnacl as a dependency to the frontend project."
         ]
       },
       "acceptanceCriteria": [
-        "`backend/main.mo` contains an updated inventory comment that includes every `public`/`public query`/`public shared` function defined in the actor (e.g., including items currently omitted such as `getAllLicenses`, `getMyLicenseStatus`, and `getLicenseStatus`, if present).",
-        "The inventory comment also lists the key public types that are part of the exposed surface in this file (as they exist today), without changing any type definitions.",
-        "No public method names, signatures, or return types are changed as part of this requirement."
-      ]
-    },
-    {
-      "id": "REQ-164",
-      "text": "In `backend/main.mo`, make the backward-compatibility documentation internally consistent by ensuring the comment immediately above the `UserProfile` type explicitly states that the Phase 1 fields `planTier`, `botPublicKey`, and `bot_id` are intentionally OPTIONAL for backward compatibility with previously stored profiles and older frontend calls, and remove/adjust any wording that could be interpreted as those fields being required.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "In `backend/main.mo`, make the backward-compatibility documentation internally consistent by ensuring the comment immediately above the `UserProfile` type explicitly states that the Phase 1 fields `planTier`, `botPublicKey`, and `bot_id` are intentionally OPTIONAL for backward compatibility with previously stored profiles and older frontend calls, and remove/adjust any wording that could be interpreted as those fields being required."
-        ]
-      },
-      "acceptanceCriteria": [
-        "The comment block immediately above `type UserProfile = { ... }` clearly states that `planTier`, `botPublicKey`, and `bot_id` are optional for backward compatibility.",
-        "There is no contradictory wording elsewhere in the nearby legacy inventory/comments implying those fields are required.",
-        "No changes are made to any public method signatures."
-      ]
-    },
-    {
-      "id": "REQ-165",
-      "text": "In `backend/main.mo`, verify (and if necessary, minimally adjust) any `UserProfile` record literals/constructors so that when a profile is constructed without an explicit bot id, it sets `bot_id = null` explicitly (do not rely on missing-field inference), preserving compatibility for callers that omit `bot_id`.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "In `backend/main.mo`, verify (and if necessary, minimally adjust) any `UserProfile` record literals/constructors so that when a profile is constructed without an explicit bot id, it sets `bot_id = null` explicitly (do not rely on missing-field inference), preserving compatibility for callers that omit `bot_id`."
-        ]
-      },
-      "acceptanceCriteria": [
-        "All `UserProfile` record literals in `backend/main.mo` explicitly include a `bot_id` field assignment (`null` when not intentionally provided).",
-        "The canister compiles with no missing-field errors related to `bot_id`.",
-        "No new persistence/migration logic is introduced (no `stable` refactors, no `system preupgrade`/`system postupgrade` additions)."
+        "Frontend dependencies include `tweetnacl` (listed under dependencies in the frontend package manifest).",
+        "A production frontend build succeeds with a simple `import nacl from \"tweetnacl\"` usage (no missing-module errors)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single-actor architecture with all Motoko logic in `backend/main.mo`.",
-    "Do not change any existing public method signatures or rename/remove public methods/types in this micro-step.",
-    "Do not introduce new persistence/migration logic in this micro-step (no `stable` refactors and no `system preupgrade`/`system postupgrade`)."
+    "Do not modify any immutable frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui/*."
   ],
   "nonGoals": [
-    "Implementing the full Phase 1 stable-memory users registry, bot_id index, audit logs ledger, or Ed25519 verification (beyond documentation/compatibility edits).",
-    "Changing any frontend behavior or UI."
+    "Do not change Ed25519 key generation logic in ConnectBotWizardModal as part of this request.",
+    "Do not add any backend changes."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

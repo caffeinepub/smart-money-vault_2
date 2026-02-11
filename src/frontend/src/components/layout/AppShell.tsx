@@ -31,9 +31,9 @@ export default function AppShell() {
       {/* Footer */}
       <footer className="border-t border-white/5 bg-[#121212]/80 px-6 py-3 backdrop-blur-xl">
         <p className="text-center text-xs text-white/30">
-          © 2026. Built with <Heart className="inline h-3 w-3 text-rose-500" /> using{' '}
+          © {new Date().getFullYear()}. Built with <Heart className="inline h-3 w-3 text-rose-500" /> using{' '}
           <a
-            href="https://caffeine.ai"
+            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-white/40 transition-colors hover:text-white/60"

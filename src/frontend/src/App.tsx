@@ -3,6 +3,7 @@ import { useGetCallerUserProfile } from './hooks/useCurrentUserProfile';
 import LoginButton from './components/auth/LoginButton';
 import ProfileSetupModal from './components/auth/ProfileSetupModal';
 import AppShell from './components/layout/AppShell';
+import { ToastProvider } from './components/common/ToastProvider';
 import { Loader2, Heart } from 'lucide-react';
 
 export default function App() {
@@ -35,9 +36,9 @@ export default function App() {
         <LoginButton />
         <footer className="absolute bottom-8 text-center">
           <p className="text-xs text-white/30">
-            © 2026. Built with <Heart className="inline h-3 w-3 text-rose-500" /> using{' '}
+            © {new Date().getFullYear()}. Built with <Heart className="inline h-3 w-3 text-rose-500" /> using{' '}
             <a
-              href="https://caffeine.ai"
+              href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-white/40 transition-colors hover:text-white/60"
@@ -54,9 +55,9 @@ export default function App() {
   const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
 
   return (
-    <>
+    <ToastProvider>
       <AppShell />
       {showProfileSetup && <ProfileSetupModal />}
-    </>
+    </ToastProvider>
   );
 }

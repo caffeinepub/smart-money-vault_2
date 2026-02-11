@@ -7,30 +7,38 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface Symbol {
-    token: string;
-    feed: string;
-    currency: string;
-    exchange: string;
+export interface Signal {
+    direction: Variant_buy_sell;
+    signalId: string;
+    timestamp: Time;
+    quantity: bigint;
+    price: number;
+}
+export type Result_2 = {
+    __kind__: "ok";
+    ok: string;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
 }
 export type Time = bigint;
-export interface Trade {
-    entryTimestamp: Time;
-    accountId: AccountId;
-    instrument: string;
-    side: TradeSide;
-    size: number;
-    tradeId: string;
-    exitTimestamp?: Time;
-    entryPrice: number;
-    exitPrice?: number;
-}
 export interface StrategyBundle {
     entryStrategy: bigint;
     paths: Array<StrategyPath>;
     items: Array<Strategy>;
     inputSymbol: Symbol;
     outputSymbol: Symbol;
+}
+export interface AuditEntry {
+    principal: Principal;
+    action: string;
+    timestamp: Time;
+    details: string;
 }
 export type Result_1 = {
     __kind__: "ok";
@@ -50,22 +58,22 @@ export interface StrategicVault {
     strategies: Array<StrategyBundle>;
 }
 export type AccountId = string;
-export type Result = {
-    __kind__: "ok";
-    ok: StrategicVault;
-} | {
-    __kind__: "err";
-    err: Error_;
-};
 export interface License {
     active: boolean;
     createdAt: Time;
     updatedAt?: Time;
     revokedAt?: Time;
 }
-export interface JwtToken {
-    jwt: string;
-    accountId: AccountId;
+export type SignalFetchResult = {
+    __kind__: "ok";
+    ok: Array<Signal>;
+} | {
+    __kind__: "err";
+    err: BotError;
+};
+export interface TransformationInput {
+    context: Uint8Array;
+    response: http_request_result;
 }
 export interface StrategyPath {
     deployedAt: Time;
@@ -79,6 +87,57 @@ export interface Strategy {
     side: TradeSide;
     priceFeed: Symbol;
 }
+export interface Symbol {
+    token: string;
+    feed: string;
+    currency: string;
+    exchange: string;
+}
+export interface BotProfile {
+    publicKey?: Uint8Array;
+    uplinkStatus: boolean;
+    botUrl?: string;
+    lastHeartbeat: Time;
+    cyclesWarning: boolean;
+}
+export interface Trade {
+    entryTimestamp: Time;
+    accountId: AccountId;
+    instrument: string;
+    side: TradeSide;
+    size: number;
+    tradeId: string;
+    exitTimestamp?: Time;
+    entryPrice: number;
+    exitPrice?: number;
+}
+export interface http_header {
+    value: string;
+    name: string;
+}
+export interface http_request_result {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export type Result = {
+    __kind__: "ok";
+    ok: StrategicVault;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
+export interface JwtToken {
+    jwt: string;
+    accountId: AccountId;
+}
+export type BotError = {
+    __kind__: "InvalidUrl";
+    InvalidUrl: string;
+} | {
+    __kind__: "FetchFailed";
+    FetchFailed: string;
+};
 export interface UserProfile {
     botPublicKey?: Uint8Array;
     accountId?: string;
@@ -100,9 +159,9 @@ export enum Status {
     SUSPENDED = "SUSPENDED",
     ACTIVE = "ACTIVE"
 }
-export enum TradeSide {
-    buy = "buy",
-    sell = "sell"
+export enum UplinkStatus {
+    EXECUTE = "EXECUTE",
+    STANDBY = "STANDBY"
 }
 export enum UserRole {
     admin = "admin",
@@ -114,10 +173,18 @@ export enum Variant_Pro_Free_Whale {
     Free = "Free",
     Whale = "Whale"
 }
+export enum Variant_buy_sell {
+    buy = "buy",
+    sell = "sell"
+}
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    check_uplink(bot_id: string, signature: Uint8Array): Promise<UplinkStatus>;
     createOrUpdateLicense(accountId: AccountId, active: boolean): Promise<void>;
+    fetchSignals(): Promise<SignalFetchResult>;
     getAllLicenses(): Promise<Array<[AccountId, License]>>;
+    getAuditLog(limit: bigint): Promise<Array<AuditEntry>>;
+    getBotProfile(): Promise<BotProfile | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getHeartbeatData(_accountId: AccountId): Promise<HeartbeatData>;
@@ -126,9 +193,13 @@ export interface backendInterface {
     getTradesPaginated(accountId: AccountId | null, startTime: Time | null, endTime: Time | null, start: bigint, limit: bigint): Promise<Array<Trade>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    registerBotPublicKey(publicKey: Uint8Array): Promise<void>;
     revokeLicense(accountId: AccountId): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setBotUrl(url: string): Promise<Result_2>;
     storeJwt(jwt: string, accountId: AccountId): Promise<Result_1>;
     storeStrategicVault(vaultData: StrategicVault, _accountId: AccountId): Promise<Result>;
     submitTrade(trade: Trade, signature: Uint8Array, nonce: string, timestamp: Time): Promise<void>;
+    toggle_uplink(state: boolean): Promise<void>;
+    transform(input: TransformationInput): Promise<TransformationOutput>;
 }

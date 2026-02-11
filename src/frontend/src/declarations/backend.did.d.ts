@@ -11,6 +11,21 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export type AccountId = string;
+export interface AuditEntry {
+  'principal' : Principal,
+  'action' : string,
+  'timestamp' : Time,
+  'details' : string,
+}
+export type BotError = { 'InvalidUrl' : string } |
+  { 'FetchFailed' : string };
+export interface BotProfile {
+  'publicKey' : [] | [Uint8Array],
+  'uplinkStatus' : boolean,
+  'botUrl' : [] | [string],
+  'lastHeartbeat' : Time,
+  'cyclesWarning' : boolean,
+}
 export type Error = { 'InvalidInput' : null } |
   { 'LicenseInactive' : null } |
   { 'TimestampOutOfWindow' : null } |
@@ -36,6 +51,18 @@ export type Result = { 'ok' : StrategicVault } |
   { 'err' : Error };
 export type Result_1 = { 'ok' : JwtToken } |
   { 'err' : Error };
+export type Result_2 = { 'ok' : string } |
+  { 'err' : Error };
+export interface Signal {
+  'direction' : { 'buy' : null } |
+    { 'sell' : null },
+  'signalId' : string,
+  'timestamp' : Time,
+  'quantity' : bigint,
+  'price' : number,
+}
+export type SignalFetchResult = { 'ok' : Array<Signal> } |
+  { 'err' : BotError };
 export type Status = { 'SUSPENDED' : null } |
   { 'ACTIVE' : null };
 export interface StrategicVault {
@@ -81,6 +108,17 @@ export interface Trade {
 }
 export type TradeSide = { 'buy' : null } |
   { 'sell' : null };
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
+export type UplinkStatus = { 'EXECUTE' : null } |
+  { 'STANDBY' : null };
 export interface UserProfile {
   'botPublicKey' : [] | [Uint8Array],
   'accountId' : [] | [string],
@@ -91,11 +129,21 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'check_uplink' : ActorMethod<[string, Uint8Array], UplinkStatus>,
   'createOrUpdateLicense' : ActorMethod<[AccountId, boolean], undefined>,
+  'fetchSignals' : ActorMethod<[], SignalFetchResult>,
   'getAllLicenses' : ActorMethod<[], Array<[AccountId, License]>>,
+  'getAuditLog' : ActorMethod<[bigint], Array<AuditEntry>>,
+  'getBotProfile' : ActorMethod<[], [] | [BotProfile]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getHeartbeatData' : ActorMethod<[AccountId], HeartbeatData>,
@@ -110,11 +158,15 @@ export interface _SERVICE {
   >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'registerBotPublicKey' : ActorMethod<[Uint8Array], undefined>,
   'revokeLicense' : ActorMethod<[AccountId], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setBotUrl' : ActorMethod<[string], Result_2>,
   'storeJwt' : ActorMethod<[string, AccountId], Result_1>,
   'storeStrategicVault' : ActorMethod<[StrategicVault, AccountId], Result>,
   'submitTrade' : ActorMethod<[Trade, Uint8Array, string, Time], undefined>,
+  'toggle_uplink' : ActorMethod<[boolean], undefined>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
