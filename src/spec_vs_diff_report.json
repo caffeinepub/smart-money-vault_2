@@ -1,45 +1,74 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-11T04:20:23.775Z",
-  "summary": "Profile Settings UI and React Query hooks were added, including optimistic update/rollback behavior. However, the diff summary does not provide evidence that the backend actually exports a public shared `update_profile` method or that the Candid/actor interface was updated to support it. Some additional changes (migration module and updating the profile setup modal to include new fields) appear beyond the explicit frontend Profile tab scope.",
+  "generatedAt": "2026-02-12T06:30:28.144Z",
+  "summary": "The diff introduces a migration module that adds a tiers map and seeds three tiers, plus new frontend hooks/UI for displaying tiers. However, the diff summary does not show the required backend public type/method additions in backend/main.mo, and the migration seeding appears to overwrite tiers unconditionally rather than only when the store is empty.",
   "missing_requirements": [
     {
-      "id": "REQ-3",
-      "requirement": "Add a Motoko canister method named update_profile that persists profile settings changes for the caller (display name, timezone, notification preferences) and update the Candid interface so the frontend can call it.",
-      "reason": "The frontend mutation calls `actor.update_profile(profile)` (hook added), but the provided `backend/main.mo` diff excerpt does not show any `public shared` method named `update_profile`, nor any explicit Candid/interface update evidence in the diff summary.",
+      "id": "REQ-1",
+      "requirement": "In backend/main.mo, add a new public type `SubscriptionTier` with fields: `id: Text`, `name: Text`, `maxBots: ?Nat`, `maxApiCalls: ?Nat`, `priceInCents: Nat`, `features: [Text]`, `active: Bool`.",
+      "reason": "backend/main.mo is truncated and the diff excerpt only shows legacy types; there is no visible addition of `public type SubscriptionTier = { ... }` in the provided snippet.",
       "evidence": [
-        "frontend/src/hooks/useProfileSettings.ts",
-        "backend/main.mo (truncated excerpt does not show update_profile)"
+        "backend/main.mo (truncated excerpt shows legacy types; no SubscriptionTier shown)"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Persist subscription tiers in stable storage keyed by `id`, and maintain an in-memory lookup map keyed by `id` for efficient reads/writes (without removing/changing legacy public types/methods).",
+      "reason": "The diff shows a migration adding `tiersMap` to the actor state, but does not show stable variable declarations, preupgrade/postupgrade hooks, or an in-memory lookup map implementation in backend/main.mo.",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo (truncated; no tier storage/upgrade plumbing shown)"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Seed default tiers only if the stable tier store is empty, and do not overwrite/duplicate tiers on upgrades.",
+      "reason": "The migration code unconditionally sets `tiersMap = initialTiers` on migration, which would overwrite any existing tiers rather than only seeding when empty.",
+      "evidence": [
+        "backend/migration.mo (run(): returns `{ old with tiersMap = initialTiers }` unconditionally)"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Implement public query methods `list_tiers()` -> `Result<[SubscriptionTier]>` and `get_tier(id: Text)` -> `Result<SubscriptionTier>` using existing `#ok/#err` Result pattern.",
+      "reason": "No evidence in the provided backend/main.mo excerpt that these public query methods were added or that they return the required Result variants.",
+      "evidence": [
+        "backend/main.mo (truncated; no list_tiers/get_tier shown)"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Add admin-only update calls using AccessControl.isAdmin: `create_tier`, `update_tier` (partial patch with ??Nat semantics), and `toggle_tier_active`; all must be shared update calls and create must reject duplicate ids.",
+      "reason": "No evidence in the provided backend/main.mo excerpt that these admin-only mutation methods were implemented with `public shared ({ caller })` and AccessControl.isAdmin checks.",
+      "evidence": [
+        "backend/main.mo (truncated; no create_tier/update_tier/toggle_tier_active shown)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Added stable-state migration module and applied upgrade migration wiring.",
-      "reason": "The BuildRequest allows adding `migration.mo` only if required for a stable-state upgrade, but it was not explicitly requested as a requirement. The diff adds `backend/migration.mo` and applies it via `(with migration = Migration.run)` in `backend/main.mo`.",
+      "description": "Added new frontend React Query hooks for listing/getting subscription tiers (useListTiers/useGetTier).",
+      "reason": "The BuildRequest focuses on backend subscription tier management APIs and explicitly includes constraints about not modifying certain frontend paths, but does not request adding new frontend hooks.",
       "evidence": [
-        "backend/migration.mo",
-        "backend/main.mo"
+        "frontend/src/hooks/useTiers.ts"
       ]
     },
     {
-      "description": "Extended the Profile setup modal to include timezone and notificationsEnabled defaults in the created UserProfile.",
-      "reason": "The BuildRequest focuses on implementing the Settings page Profile tab and canister-backed updates; it does not request changes to the first-time profile setup modal.",
+      "description": "Updated SubscriptionPanel UI to display subscription tiers fetched from the backend, including empty/loading states and tier card rendering.",
+      "reason": "The BuildRequest is for backend APIs; it does not request implementing or changing subscription tier UI.",
       "evidence": [
-        "frontend/src/components/auth/ProfileSetupModal.tsx"
+        "frontend/src/components/settings/SubscriptionPanel.tsx"
       ]
     }
   ],
-  "confidence": 0.66,
+  "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/auth/ProfileSetupModal.tsx",
-    "frontend/src/components/settings/ProfileSettingsForm.tsx",
-    "frontend/src/hooks/useProfileSettings.ts",
-    "frontend/src/screens/SettingsRouteScreen.tsx",
+    "frontend/src/components/settings/SubscriptionPanel.tsx",
+    "frontend/src/hooks/useTiers.ts",
     "project_state.json"
   ]
 }

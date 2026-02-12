@@ -16,7 +16,7 @@ export interface Signal {
 }
 export type Result_2 = {
     __kind__: "ok";
-    ok: string;
+    ok: JwtToken;
 } | {
     __kind__: "err";
     err: Error_;
@@ -40,9 +40,16 @@ export interface AuditEntry {
     timestamp: Time;
     details: string;
 }
+export type Result_5 = {
+    __kind__: "ok";
+    ok: SubscriptionTier;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
 export type Result_1 = {
     __kind__: "ok";
-    ok: JwtToken;
+    ok: StrategicVault;
 } | {
     __kind__: "err";
     err: Error_;
@@ -57,6 +64,13 @@ export interface StrategicVault {
     jwt: string;
     strategies: Array<StrategyBundle>;
 }
+export type Result_4 = {
+    __kind__: "ok";
+    ok: Array<SubscriptionTier>;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
 export type AccountId = string;
 export interface License {
     active: boolean;
@@ -120,9 +134,25 @@ export interface http_request_result {
     body: Uint8Array;
     headers: Array<http_header>;
 }
+export interface SubscriptionTier {
+    id: string;
+    features: Array<string>;
+    active: boolean;
+    maxApiCalls?: bigint;
+    name: string;
+    maxBots?: bigint;
+    priceInCents: bigint;
+}
 export type Result = {
     __kind__: "ok";
-    ok: StrategicVault;
+    ok: null;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
+export type Result_3 = {
+    __kind__: "ok";
+    ok: string;
 } | {
     __kind__: "err";
     err: Error_;
@@ -183,6 +213,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     check_uplink(bot_id: string, signature: Uint8Array): Promise<UplinkStatus>;
     createOrUpdateLicense(accountId: AccountId, active: boolean): Promise<void>;
+    create_tier(tier: SubscriptionTier): Promise<Result>;
     fetchSignals(): Promise<SignalFetchResult>;
     getAllLicenses(): Promise<Array<[AccountId, License]>>;
     getAuditLog(limit: bigint): Promise<Array<AuditEntry>>;
@@ -194,15 +225,26 @@ export interface backendInterface {
     getMyLicenseStatus(): Promise<License | null>;
     getTradesPaginated(accountId: AccountId | null, startTime: Time | null, endTime: Time | null, start: bigint, limit: bigint): Promise<Array<Trade>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    get_tier(id: string): Promise<Result_5>;
     isCallerAdmin(): Promise<boolean>;
+    list_tiers(): Promise<Result_4>;
     registerBotPublicKey(publicKey: Uint8Array): Promise<void>;
     revokeLicense(accountId: AccountId): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    setBotUrl(url: string): Promise<Result_2>;
-    storeJwt(jwt: string, accountId: AccountId): Promise<Result_1>;
-    storeStrategicVault(vaultData: StrategicVault, _accountId: AccountId): Promise<Result>;
+    setBotUrl(url: string): Promise<Result_3>;
+    storeJwt(jwt: string, accountId: AccountId): Promise<Result_2>;
+    storeStrategicVault(vaultData: StrategicVault, _accountId: AccountId): Promise<Result_1>;
     submitTrade(trade: Trade, signature: Uint8Array, nonce: string, timestamp: Time): Promise<void>;
+    toggle_tier_active(id: string, active: boolean): Promise<Result>;
     toggle_uplink(state: boolean): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
     update_profile(profile: UserProfile): Promise<void>;
+    update_tier(id: string, patch: {
+        features?: Array<string>;
+        active?: boolean;
+        maxApiCalls?: bigint | null;
+        name?: string;
+        maxBots?: bigint | null;
+        priceInCents?: bigint;
+    }): Promise<Result>;
 }

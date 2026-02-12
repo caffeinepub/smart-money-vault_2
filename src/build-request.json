@@ -1,111 +1,123 @@
 {
   "kind": "build_request",
-  "title": "Implement Profile Settings tab with canister-backed update_profile and optimistic saves",
+  "title": "Implement backend subscription tier management APIs (list_tiers/get_tier + admin CRUD)",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Replace the placeholder content in the Settings page “Profile” tab with a functional Profile Settings form that includes: (1) the caller’s current Principal ID displayed read-only, (2) an editable Display name text field, (3) a Timezone selector, (4) Notification preferences represented as toggle switches, and (5) a Save button.",
-      "target": "frontend",
+      "text": "In backend/main.mo, add a new public type `SubscriptionTier` with fields: `id: Text`, `name: Text`, `maxBots: ?Nat` (null means unlimited), `maxApiCalls: ?Nat` (null means unlimited), `priceInCents: Nat`, `features: [Text]`, `active: Bool`.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-implementation-start"
         ],
         "quotes": [
-          "Implement the Profile Settings tab in the Settings page:\n- Display current principal ID (read-only)\n- Editable display name field\n- Timezone selector\n- Notification preferences (toggle switches)\n- Save button that calls the Motoko canister's update_profile method"
+          "I need: 1. A SubscriptionTier type with fields: id (Text), name (Text), maxBots (Nat), maxApiCalls (Nat), priceInCents (Nat), features ([Text]), active (Bool).",
+          "1. unlimited = null (?Nat), NOT sentinel"
         ]
       },
       "acceptanceCriteria": [
-        "In SettingsRouteScreen.tsx, the TabsContent for value=\"profile\" renders a form UI instead of the current placeholder text.",
-        "The Principal ID is shown as a read-only value (not editable) and uses the authenticated Internet Identity principal.",
-        "The Display name field is editable and is prefilled from the current stored profile when available.",
-        "A Timezone selector is present and shows the currently saved timezone when available (otherwise a sensible default is selected).",
-        "At least two notification preference toggles are shown, with clear English labels, and reflect saved state when available.",
-        "A Save button is present and is disabled while saving."
+        "The canister compiles and exposes `public type SubscriptionTier = { ... }` exactly with the requested fields.",
+        "`maxBots` and `maxApiCalls` are optional types (`?Nat`) where `null` represents unlimited."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Implement React Query data flow for Profile Settings: load existing profile settings, and save changes via a React Query mutation that performs optimistic updates and properly rolls back on error.",
-      "target": "frontend",
+      "text": "Persist subscription tiers in stable storage keyed by `id`, and maintain an in-memory lookup map keyed by `id` for efficient reads/writes. Do not remove or change any legacy public types/methods listed in the file header compatibility inventory.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-implementation-start"
         ],
         "quotes": [
-          "Use React Query mutation with optimistic updates."
+          "2. A stable map of tiers keyed by id.",
+          "Preserve ALL legacy public methods listed in the file header comment"
         ]
       },
       "acceptanceCriteria": [
-        "A React Query query exists to load the current user’s profile settings (display name, timezone, notification preferences) from the canister and populate the form.",
-        "A React Query mutation exists to save profile settings via the canister’s update_profile method.",
-        "The mutation performs an optimistic update to the relevant React Query cache key(s) before the canister call resolves.",
-        "If the canister call fails, the optimistic update is rolled back to the previous cached value(s).",
-        "On success, the saved settings are reflected in the UI and the relevant queries are invalidated/refetched to ensure consistency."
+        "Tier data survives canister upgrade (stable storage is used).",
+        "Tier lookup is keyed by `id` and supports create, update, toggle active, get, and list operations.",
+        "No legacy public method signatures/types are removed or renamed."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Add a Motoko canister method named update_profile (if missing) that persists profile settings changes for the caller, including display name, timezone, and notification preferences, and ensure the frontend can call it.",
+      "text": "Seed default tiers during initialization if the stable tier store is empty: `free` (name \"Paper Hand\", maxBots= ?1, maxApiCalls=?1000, priceInCents=0, active=true), `pro` (name \"Diamond Hand\", maxBots=?5, maxApiCalls=?50000, priceInCents=5000, active=true), `whale` (name \"Whale\", maxBots=null, maxApiCalls=null, priceInCents=50000, active=true).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-implementation-start"
         ],
         "quotes": [
-          "Add the update_profile method to the Motoko canister if it doesn't exist."
+          "3. Default tiers seeded on init: \"free\" (Paper Hand, 1 bot, 1000 calls, 0 cents), \"pro\" (Diamond Hand, 5 bots, 50000 calls, 5000 cents), \"whale\" (Whale, unlimited, unlimited, 50000 cents)."
         ]
       },
       "acceptanceCriteria": [
-        "backend/main.mo exports a public shared method update_profile that uses the authenticated caller and enforces the same authenticated-user authorization pattern as getCallerUserProfile/saveCallerUserProfile.",
-        "Calling update_profile persists the caller’s updated display name, timezone, and notification preferences so they can be retrieved on subsequent loads.",
-        "The update_profile method does not break or change existing legacy public methods/types listed in the compatibility inventory at the top of backend/main.mo.",
-        "The Candid interface is updated so the frontend actor can call update_profile successfully."
+        "On first deploy with no existing tier state, calling `list_tiers()` returns at least the three default tiers with the specified IDs and values.",
+        "On upgrades where tiers already exist, defaults are not duplicated or overwritten."
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Do not modify the Settings page Connections tab or Subscription tab behavior/content while implementing the Profile tab changes.",
-      "target": "frontend",
+      "text": "Implement public query methods expected by the frontend: `list_tiers()` returning `Result<[SubscriptionTier]>` and `get_tier(id : Text)` returning `Result<SubscriptionTier>`. These methods must be publicly accessible (not admin-only) and must return variants matching the existing `Result` type pattern (`#ok` / `#err`) so the frontend can rely on `__kind__ === 'ok'` / `__kind__ === 'err'` decoding.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-implementation-start"
         ],
         "quotes": [
-          "Do not modify the Connections or Subscription tabs."
+          "The frontend already calls these methods that don't exist yet:\n  actor.list_tiers()\n  actor.get_tier(id)",
+          "5. list_tiers returns Result<[SubscriptionTier]> (the frontend expects __kind__ === 'ok' pattern).\n6. get_tier returns Result<SubscriptionTier>.",
+          "2. list_tiers / get_tier = public query; create/update/delete = admin-only"
         ]
       },
       "acceptanceCriteria": [
-        "TabsContent for value=\"connections\" remains functionally unchanged.",
-        "TabsContent for value=\"subscription\" remains functionally unchanged (including admin-only visibility logic).",
-        "Only the Profile tab content is expanded/implemented."
+        "`list_tiers` is a `public query` method and returns `#ok([SubscriptionTier])` on success and `#err(Error)` on failure.",
+        "`get_tier` is a `public query` method and returns `#ok(SubscriptionTier)` when the tier exists and `#err(Error)` when it does not.",
+        "Returned values are encoded using the existing `Result<T>` variant style used elsewhere in main.mo (`#ok` / `#err`)."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Add admin-only tier management update calls using AccessControl.isAdmin for authorization checks: `create_tier(tier : SubscriptionTier)`, `update_tier(id : Text, patch : { name : ?Text; maxBots : ??Nat; maxApiCalls : ??Nat; priceInCents : ?Nat; features : ?[Text]; active : ?Bool })` (partial update semantics), and `toggle_tier_active(id : Text, active : Bool)`. All mutations must be `shared` update calls (not query). `create_tier` must reject duplicate `id` with `#err(...)` and must not overwrite existing tiers.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-implementation-start"
+        ],
+        "quotes": [
+          "4. Admin-only CRUD: create_tier, update_tier, list_tiers, toggle_tier_active, get_tier.",
+          "All mutations must be update calls, never query calls",
+          "Access control: use AccessControl.hasPermission for user checks, AccessControl.isAdmin for admin checks",
+          "3. update_tier = partial update (optional fields, null = keep existing)\n4. create_tier = reject duplicates (#err), use update_tier for changes"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Non-admin callers receive an authorization failure (`#err(#Unauthorized)` or an equivalent `#err(Error)` outcome consistent with the project’s Result/Error patterns) for create/update/toggle operations.",
+        "`create_tier` returns `#err(...)` if a tier with the same `id` already exists; no overwrite occurs.",
+        "`update_tier` performs partial updates: omitted/`null` patch fields do not change existing values; the method does not require sending a full tier record.",
+        "`toggle_tier_active` updates only the `active` field for the specified tier ID.",
+        "All tier mutations are implemented as update calls (`public shared ({ caller }) func ...`)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain single-actor; all Motoko logic stays in backend/main.mo (add migration.mo only if a stable-state upgrade is required).",
-    "Do not edit files under frontend/src/components/ui (compose them only).",
-    "Do not edit immutable frontend paths listed in SYSTEM_CONTEXT (e.g., frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx).",
-    "Use English for all user-facing UI text."
+    "Backend must remain a single Motoko actor in backend/main.mo (single-canister architecture).",
+    "Preserve ALL legacy public methods and public types listed in backend/main.mo header compatibility inventory; do not rename or remove them.",
+    "All mutations must be update calls (never query calls).",
+    "Use AccessControl.isAdmin for admin checks (and AccessControl.hasPermission for user checks if needed).",
+    "Do not modify frontend immutable paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui/*.",
+    "Keep files under 1000 lines; if needed, split new tier logic into new Motoko modules and import them from backend/main.mo (without altering legacy API).",
+    "Use English for any user-facing text."
   ],
   "nonGoals": [
-    "Implementing or redesigning the Connections tab content.",
-    "Implementing or redesigning the Subscription tab content.",
-    "Adding non-Internet-Identity authentication methods.",
-    "Adding real-time notifications delivery (only preference toggles and persistence are in scope)."
+    "Implementing Stripe payment flows or subscription checkout UI.",
+    "Adding third-party authentication (anything other than Internet Identity).",
+    "Adding a delete_tier method unless explicitly requested (current scope includes create/update/toggle/get/list only).",
+    "Changing existing license, trade, bot, or audit-log behaviors beyond what is necessary to add tier storage and APIs."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

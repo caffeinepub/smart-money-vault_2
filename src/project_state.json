@@ -1,69 +1,72 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Implement a Profile Settings tab in the Settings page with profile fields and persistence via a Motoko canister update_profile method, using React Query mutations with optimistic updates, without changing other settings tabs.",
+  "summary": "Smart Money Vault: institutional trading command center on ICP with a single Motoko canister (backend/main.mo) and React frontend; adding backend subscription tier management to support frontend tier APIs and admin CRUD.",
   "architectural_notes": [
-    "Do not modify Connections or Subscription tabs while implementing Profile Settings.",
-    "Profile updates are persisted via Motoko canister method update_profile.",
-    "Use React Query mutation with optimistic updates for profile saves."
+    "Project name: Smart Money Vault (institutional trading command center on ICP).",
+    "Architecture: single Motoko canister (backend/main.mo) + React frontend; off-chain Python trading bot signs requests with Ed25519.",
+    "Rules: preserve all legacy public methods listed in file header comment; all mutations must be update calls, never query calls; keep files <1000 lines and split into modules if needed; do not modify stable/tested modules unless explicitly told.",
+    "Do not modify paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui/*.",
+    "Access control: use AccessControl.hasPermission for user checks and AccessControl.isAdmin for admin checks.",
+    "Subscription tiers: represent unlimited maxBots/maxApiCalls as null (?Nat), not sentinel values.",
+    "Tier API access: list_tiers and get_tier are public query; create/update/toggle are admin-only update methods.",
+    "update_tier semantics: partial update with optional fields; null means keep existing value.",
+    "create_tier semantics: reject duplicate tier IDs with #err; use update_tier for changes.",
+    "list_tiers returns Result<[SubscriptionTier]> and get_tier returns Result<SubscriptionTier> with frontend expecting __kind__ === 'ok'."
   ],
   "known_issues": [],
   "isFixRequest": false,
-  "existing_features": [
-    {
-      "id": "feature-replace-the-placeholder-content-in-the-settings-page-profile-tab-with-a-functional-profile-settings-form-that-includes-1-the-caller-s-current-principal-id-displayed-read-only-2-an-editable-display-name-text-field-3-a-timezone-selector-4-notification-preferences-represented-as-toggle-switches-and-5-a-save-button",
-      "title": "Replace the placeholder content in the Settings page “Profile” tab with a functional Profile Settings form that includes: (1) the caller’s current Principal ID displayed read-only, (2) an editable Display name text field, (3) a Timezone selector, (4) Notification preferences represented as toggle switches, and (5) a Save button.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-react-query-data-flow-for-profile-settings-load-existing-profile-settings-and-save-changes-via-a-react-query-mutation-that-performs-optimistic-updates-and-properly-rolls-back-on-error",
-      "title": "Implement React Query data flow for Profile Settings: load existing profile settings, and save changes via a React Query mutation that performs optimistic updates and properly rolls back on error.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-do-not-modify-the-settings-page-connections-tab-or-subscription-tab-behavior-content-while-implementing-the-profile-tab-changes",
-      "title": "Do not modify the Settings page Connections tab or Subscription tab behavior/content while implementing the Profile tab changes.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
-    }
-  ],
+  "existing_features": [],
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement Profile Settings tab: show principal ID (read-only), edit display name, timezone selector, notification toggles, and Save button",
+      "summary": "Implement subscription tier management in Motoko canister: define SubscriptionTier type, stable map keyed by id, seed default tiers (free/pro/whale), public query list_tiers/get_tier returning Result (ok/err pattern), and admin-only create_tier/update_tier (partial update with optional fields where null keeps existing) plus toggle_tier_active; create_tier rejects duplicate ids.",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Add/ensure Motoko canister method update_profile to persist profile settings changes",
-      "reqIds": [],
+      "summary": "In backend/main.mo, add a new public type `SubscriptionTier` with fields: `id: Text`, `name: Text`, `maxBots: ?Nat` (null means unlimited), `maxApiCalls: ?Nat` (null means unlimited), `priceInCents: Nat`, `features: [Text]`, `active: Bool`.",
+      "reqIds": [
+        "REQ-1"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Use React Query mutation with optimistic updates for saving profile settings",
-      "reqIds": [],
+      "summary": "Persist subscription tiers in stable storage keyed by `id`, and maintain an in-memory lookup map keyed by `id` for efficient reads/writes. Do not remove or change any legacy public types/methods listed in the file header compatibility inventory.",
+      "reqIds": [
+        "REQ-2"
+      ],
       "status": "pending"
     },
     {
-      "id": "AR-6",
-      "summary": "Add a Motoko canister method named update_profile (if missing) that persists profile settings changes for the caller, including display name, timezone, and notification preferences, and ensure the frontend can call it.",
+      "id": "AR-4",
+      "summary": "Seed default tiers during initialization if the stable tier store is empty: `free` (name \"Paper Hand\", maxBots= ?1, maxApiCalls=?1000, priceInCents=0, active=true), `pro` (name \"Diamond Hand\", maxBots=?5, maxApiCalls=?50000, priceInCents=5000, active=true), `whale` (name \"Whale\", maxBots=null, maxApiCalls=null, priceInCents=50000, active=true).",
       "reqIds": [
         "REQ-3"
       ],
       "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Implement public query methods expected by the frontend: `list_tiers()` returning `Result<[SubscriptionTier]>` and `get_tier(id : Text)` returning `Result<SubscriptionTier>`. These methods must be publicly accessible (not admin-only) and must return variants matching the existing `Result` type pattern (`#ok` / `#err`) so the frontend can rely on `__kind__ === 'ok'` / `__kind__ === 'err'` decoding.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Add admin-only tier management update calls using AccessControl.isAdmin for authorization checks: `create_tier(tier : SubscriptionTier)`, `update_tier(id : Text, patch : { name : ?Text; maxBots : ??Nat; maxApiCalls : ??Nat; priceInCents : ?Nat; features : ?[Text]; active : ?Bool })` (partial update semantics), and `toggle_tier_active(id : Text, active : Bool)`. All mutations must be `shared` update calls (not query). `create_tier` must reject duplicate `id` with `#err(...)` and must not overwrite existing tiers.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "status": "pending"
     }
   ],
-  "projectName": "Implement Profile Settings tab with canister-backed update_profile and optimistic saves",
+  "gameProjectType": "none",
+  "projectName": "Smart Money Vault",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

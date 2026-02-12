@@ -1,12 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Replace the Settings “Profile” tab placeholder with a working, canister-backed Profile Settings form that loads and saves user profile settings with optimistic updates.
+**Goal:** Add backend subscription tier storage and APIs (public read + admin-managed create/update/toggle) to support frontend tier listing and lookup.
 
 **Planned changes:**
-- Implement a Profile Settings form in `SettingsRouteScreen.tsx` (Profile tab only) showing: read-only Principal ID, editable Display name, Timezone selector, notification preference toggles, and a Save button with disabled-while-saving behavior.
-- Add React Query query to load the caller’s current profile settings from the canister and prefill the form (with sensible defaults when values are missing).
-- Add React Query mutation to save profile settings via a canister `update_profile` method, using optimistic cache updates and rollback on error, and invalidate/refetch on success.
-- Add/ensure a Motoko `update_profile` shared method in `backend/main.mo` that persists display name, timezone, and notification preferences for the authenticated caller, and update the Candid interface so the frontend can call it.
+- Define a new public `SubscriptionTier` type in `backend/main.mo` with optional limits (`?Nat` where `null` means unlimited).
+- Persist tiers in stable storage keyed by `id`, with an in-memory lookup map for efficient access, while preserving all legacy public APIs/types.
+- Seed default tiers on initialization only when no tiers exist (`free`, `pro`, `whale`) with the specified limits and pricing.
+- Add public query APIs for the frontend: `list_tiers()` and `get_tier(id : Text)` returning the existing `Result` variant style (`#ok` / `#err`).
+- Add admin-only update APIs (AccessControl.isAdmin) as shared update calls: `create_tier`, `update_tier` (partial patch semantics), and `toggle_tier_active`, including duplicate-id rejection for `create_tier`.
 
-**User-visible outcome:** In the Settings page’s Profile tab, users can view their Principal ID, edit profile details (display name, timezone, notification preferences), and save changes that persist across reloads, with fast optimistic UI updates.
+**User-visible outcome:** The frontend can fetch all subscription tiers and fetch a tier by id, and admins can create and manage tiers (update fields and enable/disable tiers) via backend APIs.

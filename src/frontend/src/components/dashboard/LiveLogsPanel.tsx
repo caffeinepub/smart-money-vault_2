@@ -11,7 +11,7 @@ interface LogEntry {
   type: 'info' | 'success' | 'error';
 }
 
-export default function LivePulseTerminal() {
+export default function LiveLogsPanel() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const { data: botProfile } = useGetBotProfile();
   const fetchMutation = useFetchSignalsTest();

@@ -47,11 +47,17 @@ export interface License {
   'updatedAt' : [] | [Time],
   'revokedAt' : [] | [Time],
 }
-export type Result = { 'ok' : StrategicVault } |
+export type Result = { 'ok' : null } |
   { 'err' : Error };
-export type Result_1 = { 'ok' : JwtToken } |
+export type Result_1 = { 'ok' : StrategicVault } |
   { 'err' : Error };
-export type Result_2 = { 'ok' : string } |
+export type Result_2 = { 'ok' : JwtToken } |
+  { 'err' : Error };
+export type Result_3 = { 'ok' : string } |
+  { 'err' : Error };
+export type Result_4 = { 'ok' : Array<SubscriptionTier> } |
+  { 'err' : Error };
+export type Result_5 = { 'ok' : SubscriptionTier } |
   { 'err' : Error };
 export interface Signal {
   'direction' : { 'buy' : null } |
@@ -87,6 +93,15 @@ export interface StrategyPath {
   'deployedAt' : Time,
   'items' : Array<Strategy>,
   'pathSymbols' : Array<Symbol>,
+}
+export interface SubscriptionTier {
+  'id' : string,
+  'features' : Array<string>,
+  'active' : boolean,
+  'maxApiCalls' : [] | [bigint],
+  'name' : string,
+  'maxBots' : [] | [bigint],
+  'priceInCents' : bigint,
 }
 export interface Symbol {
   'token' : string,
@@ -142,6 +157,7 @@ export interface _SERVICE {
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'check_uplink' : ActorMethod<[string, Uint8Array], UplinkStatus>,
   'createOrUpdateLicense' : ActorMethod<[AccountId, boolean], undefined>,
+  'create_tier' : ActorMethod<[SubscriptionTier], Result>,
   'fetchSignals' : ActorMethod<[], SignalFetchResult>,
   'getAllLicenses' : ActorMethod<[], Array<[AccountId, License]>>,
   'getAuditLog' : ActorMethod<[bigint], Array<AuditEntry>>,
@@ -159,17 +175,34 @@ export interface _SERVICE {
     Array<Trade>
   >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'get_tier' : ActorMethod<[string], Result_5>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'list_tiers' : ActorMethod<[], Result_4>,
   'registerBotPublicKey' : ActorMethod<[Uint8Array], undefined>,
   'revokeLicense' : ActorMethod<[AccountId], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'setBotUrl' : ActorMethod<[string], Result_2>,
-  'storeJwt' : ActorMethod<[string, AccountId], Result_1>,
-  'storeStrategicVault' : ActorMethod<[StrategicVault, AccountId], Result>,
+  'setBotUrl' : ActorMethod<[string], Result_3>,
+  'storeJwt' : ActorMethod<[string, AccountId], Result_2>,
+  'storeStrategicVault' : ActorMethod<[StrategicVault, AccountId], Result_1>,
   'submitTrade' : ActorMethod<[Trade, Uint8Array, string, Time], undefined>,
+  'toggle_tier_active' : ActorMethod<[string, boolean], Result>,
   'toggle_uplink' : ActorMethod<[boolean], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'update_profile' : ActorMethod<[UserProfile], undefined>,
+  'update_tier' : ActorMethod<
+    [
+      string,
+      {
+        'features' : [] | [Array<string>],
+        'active' : [] | [boolean],
+        'maxApiCalls' : [] | [[] | [bigint]],
+        'name' : [] | [string],
+        'maxBots' : [] | [[] | [bigint]],
+        'priceInCents' : [] | [bigint],
+      },
+    ],
+    Result
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

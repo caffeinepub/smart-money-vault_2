@@ -1,19 +1,4 @@
 // ======================================= PUBLIC ACTOR API & TYPES (BACKWARD COMPATIBILITY: LEGACY INVENTORY) ========================================= //
-//
-// ** BACKWARD COMPATIBILITY GUARANTEE **
-// This exact API surface MUST remain 100% stable and compatible with legacy bots and frontend clients for this micro-step.
-//   - ALL methods and public types in this section are considered fixed for this incremental step.
-//   - Changes to this inventory should not break any existing interactions from legacy bots or previously deployed frontend clients.
-//
-// ** COMPATIBILITY INVENTORY (MUST REMAIN STABLE) **
-//   Core methods: getCallerUserProfile, saveCallerUserProfile, getUserProfile
-//   Auth: assignRole, isAdmin, getUserRole (from access-control)
-//   License: createOrUpdateLicense, revokeLicense
-//   Trade: getTradesPaginated, submitTrade
-//   Heartbeat: getHeartbeatData
-//   Vaults: storeStrategicVault, storeJwt
-//   Types: UserProfile, StrategicVault, Strategy, Symbol, StrategyBundle, LicenseAgreement, VaultEntry, StoredVault, Trade, HeartbeatData, JwtToken, Error, Result, Backtest, License, Status
-
 import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Iter "mo:core/Iter";
@@ -25,15 +10,11 @@ import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
 import Int "mo:core/Int";
 import Float "mo:core/Float";
-import Blob "mo:core/Blob";
 import OutCall "http-outcalls/outcall";
 import Migration "migration";
-
-
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-// Apply migration logic during upgrades
 (with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
@@ -715,5 +696,95 @@ actor {
     };
 
     auditLog.add(principal, newEntries);
+  };
+
+  // ================ New Tier Management Logic ==================== //
+
+  public type SubscriptionTier = {
+    id : Text;
+    name : Text;
+    maxBots : ?Nat;
+    maxApiCalls : ?Nat;
+    priceInCents : Nat;
+    features : [Text];
+    active : Bool;
+  };
+
+  let tiersMap = Map.empty<Text, SubscriptionTier>();
+
+  // Returns all subscription tiers as a Result (publicly accessible, not admin-only)
+  public query ({ caller }) func list_tiers() : async Result<[SubscriptionTier]> {
+    #ok(tiersMap.values().toArray());
+  };
+
+  public query ({ caller }) func get_tier(id : Text) : async Result<SubscriptionTier> {
+    switch (tiersMap.get(id)) {
+      case (?tier) { #ok(tier) };
+      case (null) { #err(#InvalidInput) };
+    };
+  };
+
+  // Creates a new subscription tier (admin-only)
+  public shared ({ caller }) func create_tier(tier : SubscriptionTier) : async Result<()> {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can create tiers");
+    };
+    if (tiersMap.containsKey(tier.id)) {
+      return #err(#InvalidInput);
+    };
+    tiersMap.add(tier.id, tier);
+    #ok(());
+  };
+
+  // Updates an existing subscription tier (admin-only)
+  public shared ({ caller }) func update_tier(id : Text, patch : {
+    name : ?Text;
+    maxBots : ??Nat;
+    maxApiCalls : ??Nat;
+    priceInCents : ?Nat;
+    features : ?[Text];
+    active : ?Bool;
+  }) : async Result<()> {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can update tiers");
+    };
+    switch (tiersMap.get(id)) {
+      case (null) { #err(#InvalidInput) };
+      case (?existing) {
+        let updated = {
+          id = existing.id;
+          name = patch.name.get(existing.name);
+          maxBots = patch.maxBots.get(existing.maxBots);
+          maxApiCalls = patch.maxApiCalls.get(existing.maxApiCalls);
+          priceInCents = patch.priceInCents.get(existing.priceInCents);
+          features = patch.features.get(existing.features);
+          active = patch.active.get(existing.active);
+        };
+        tiersMap.add(id, updated);
+        #ok(());
+      };
+    };
+  };
+
+  public shared ({ caller }) func toggle_tier_active(id : Text, active : Bool) : async Result<()> {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can toggle tier status");
+    };
+    switch (tiersMap.get(id)) {
+      case (null) { #err(#InvalidInput) };
+      case (?existing) {
+        let updated = {
+          id = existing.id;
+          name = existing.name;
+          maxBots = existing.maxBots;
+          maxApiCalls = existing.maxApiCalls;
+          priceInCents = existing.priceInCents;
+          features = existing.features;
+          active;
+        };
+        tiersMap.add(id, updated);
+        #ok(());
+      };
+    };
   };
 };

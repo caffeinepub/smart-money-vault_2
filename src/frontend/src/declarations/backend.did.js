@@ -18,6 +18,26 @@ export const UplinkStatus = IDL.Variant({
   'STANDBY' : IDL.Null,
 });
 export const AccountId = IDL.Text;
+export const SubscriptionTier = IDL.Record({
+  'id' : IDL.Text,
+  'features' : IDL.Vec(IDL.Text),
+  'active' : IDL.Bool,
+  'maxApiCalls' : IDL.Opt(IDL.Nat),
+  'name' : IDL.Text,
+  'maxBots' : IDL.Opt(IDL.Nat),
+  'priceInCents' : IDL.Nat,
+});
+export const Error = IDL.Variant({
+  'InvalidInput' : IDL.Null,
+  'LicenseInactive' : IDL.Null,
+  'TimestampOutOfWindow' : IDL.Null,
+  'InvalidSignature' : IDL.Null,
+  'Unauthorized' : IDL.Null,
+  'UnknownBotId' : IDL.Null,
+  'MissingBotKey' : IDL.Null,
+  'ReplayDetected' : IDL.Null,
+});
+export const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : Error });
 export const Time = IDL.Int;
 export const Signal = IDL.Record({
   'direction' : IDL.Variant({ 'buy' : IDL.Null, 'sell' : IDL.Null }),
@@ -86,22 +106,17 @@ export const Trade = IDL.Record({
   'entryPrice' : IDL.Float64,
   'exitPrice' : IDL.Opt(IDL.Float64),
 });
-export const Error = IDL.Variant({
-  'InvalidInput' : IDL.Null,
-  'LicenseInactive' : IDL.Null,
-  'TimestampOutOfWindow' : IDL.Null,
-  'InvalidSignature' : IDL.Null,
-  'Unauthorized' : IDL.Null,
-  'UnknownBotId' : IDL.Null,
-  'MissingBotKey' : IDL.Null,
-  'ReplayDetected' : IDL.Null,
+export const Result_5 = IDL.Variant({ 'ok' : SubscriptionTier, 'err' : Error });
+export const Result_4 = IDL.Variant({
+  'ok' : IDL.Vec(SubscriptionTier),
+  'err' : Error,
 });
-export const Result_2 = IDL.Variant({ 'ok' : IDL.Text, 'err' : Error });
+export const Result_3 = IDL.Variant({ 'ok' : IDL.Text, 'err' : Error });
 export const JwtToken = IDL.Record({
   'jwt' : IDL.Text,
   'accountId' : AccountId,
 });
-export const Result_1 = IDL.Variant({ 'ok' : JwtToken, 'err' : Error });
+export const Result_2 = IDL.Variant({ 'ok' : JwtToken, 'err' : Error });
 export const Symbol = IDL.Record({
   'token' : IDL.Text,
   'feed' : IDL.Text,
@@ -131,7 +146,7 @@ export const StrategicVault = IDL.Record({
   'jwt' : IDL.Text,
   'strategies' : IDL.Vec(StrategyBundle),
 });
-export const Result = IDL.Variant({ 'ok' : StrategicVault, 'err' : Error });
+export const Result_1 = IDL.Variant({ 'ok' : StrategicVault, 'err' : Error });
 export const http_header = IDL.Record({
   'value' : IDL.Text,
   'name' : IDL.Text,
@@ -156,6 +171,7 @@ export const idlService = IDL.Service({
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'check_uplink' : IDL.Func([IDL.Text, IDL.Vec(IDL.Nat8)], [UplinkStatus], []),
   'createOrUpdateLicense' : IDL.Func([AccountId, IDL.Bool], [], []),
+  'create_tier' : IDL.Func([SubscriptionTier], [Result], []),
   'fetchSignals' : IDL.Func([], [SignalFetchResult], []),
   'getAllLicenses' : IDL.Func(
       [],
@@ -183,14 +199,17 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'get_tier' : IDL.Func([IDL.Text], [Result_5], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'list_tiers' : IDL.Func([], [Result_4], ['query']),
   'registerBotPublicKey' : IDL.Func([IDL.Vec(IDL.Nat8)], [], []),
   'revokeLicense' : IDL.Func([AccountId], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'setBotUrl' : IDL.Func([IDL.Text], [Result_2], []),
-  'storeJwt' : IDL.Func([IDL.Text, AccountId], [Result_1], []),
-  'storeStrategicVault' : IDL.Func([StrategicVault, AccountId], [Result], []),
+  'setBotUrl' : IDL.Func([IDL.Text], [Result_3], []),
+  'storeJwt' : IDL.Func([IDL.Text, AccountId], [Result_2], []),
+  'storeStrategicVault' : IDL.Func([StrategicVault, AccountId], [Result_1], []),
   'submitTrade' : IDL.Func([Trade, IDL.Vec(IDL.Nat8), IDL.Text, Time], [], []),
+  'toggle_tier_active' : IDL.Func([IDL.Text, IDL.Bool], [Result], []),
   'toggle_uplink' : IDL.Func([IDL.Bool], [], []),
   'transform' : IDL.Func(
       [TransformationInput],
@@ -198,6 +217,21 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'update_profile' : IDL.Func([UserProfile], [], []),
+  'update_tier' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Record({
+          'features' : IDL.Opt(IDL.Vec(IDL.Text)),
+          'active' : IDL.Opt(IDL.Bool),
+          'maxApiCalls' : IDL.Opt(IDL.Opt(IDL.Nat)),
+          'name' : IDL.Opt(IDL.Text),
+          'maxBots' : IDL.Opt(IDL.Opt(IDL.Nat)),
+          'priceInCents' : IDL.Opt(IDL.Nat),
+        }),
+      ],
+      [Result],
+      [],
+    ),
 });
 
 export const idlInitArgs = [];
@@ -213,6 +247,26 @@ export const idlFactory = ({ IDL }) => {
     'STANDBY' : IDL.Null,
   });
   const AccountId = IDL.Text;
+  const SubscriptionTier = IDL.Record({
+    'id' : IDL.Text,
+    'features' : IDL.Vec(IDL.Text),
+    'active' : IDL.Bool,
+    'maxApiCalls' : IDL.Opt(IDL.Nat),
+    'name' : IDL.Text,
+    'maxBots' : IDL.Opt(IDL.Nat),
+    'priceInCents' : IDL.Nat,
+  });
+  const Error = IDL.Variant({
+    'InvalidInput' : IDL.Null,
+    'LicenseInactive' : IDL.Null,
+    'TimestampOutOfWindow' : IDL.Null,
+    'InvalidSignature' : IDL.Null,
+    'Unauthorized' : IDL.Null,
+    'UnknownBotId' : IDL.Null,
+    'MissingBotKey' : IDL.Null,
+    'ReplayDetected' : IDL.Null,
+  });
+  const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : Error });
   const Time = IDL.Int;
   const Signal = IDL.Record({
     'direction' : IDL.Variant({ 'buy' : IDL.Null, 'sell' : IDL.Null }),
@@ -278,19 +332,14 @@ export const idlFactory = ({ IDL }) => {
     'entryPrice' : IDL.Float64,
     'exitPrice' : IDL.Opt(IDL.Float64),
   });
-  const Error = IDL.Variant({
-    'InvalidInput' : IDL.Null,
-    'LicenseInactive' : IDL.Null,
-    'TimestampOutOfWindow' : IDL.Null,
-    'InvalidSignature' : IDL.Null,
-    'Unauthorized' : IDL.Null,
-    'UnknownBotId' : IDL.Null,
-    'MissingBotKey' : IDL.Null,
-    'ReplayDetected' : IDL.Null,
+  const Result_5 = IDL.Variant({ 'ok' : SubscriptionTier, 'err' : Error });
+  const Result_4 = IDL.Variant({
+    'ok' : IDL.Vec(SubscriptionTier),
+    'err' : Error,
   });
-  const Result_2 = IDL.Variant({ 'ok' : IDL.Text, 'err' : Error });
+  const Result_3 = IDL.Variant({ 'ok' : IDL.Text, 'err' : Error });
   const JwtToken = IDL.Record({ 'jwt' : IDL.Text, 'accountId' : AccountId });
-  const Result_1 = IDL.Variant({ 'ok' : JwtToken, 'err' : Error });
+  const Result_2 = IDL.Variant({ 'ok' : JwtToken, 'err' : Error });
   const Symbol = IDL.Record({
     'token' : IDL.Text,
     'feed' : IDL.Text,
@@ -320,7 +369,7 @@ export const idlFactory = ({ IDL }) => {
     'jwt' : IDL.Text,
     'strategies' : IDL.Vec(StrategyBundle),
   });
-  const Result = IDL.Variant({ 'ok' : StrategicVault, 'err' : Error });
+  const Result_1 = IDL.Variant({ 'ok' : StrategicVault, 'err' : Error });
   const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
   const http_request_result = IDL.Record({
     'status' : IDL.Nat,
@@ -346,6 +395,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'createOrUpdateLicense' : IDL.Func([AccountId, IDL.Bool], [], []),
+    'create_tier' : IDL.Func([SubscriptionTier], [Result], []),
     'fetchSignals' : IDL.Func([], [SignalFetchResult], []),
     'getAllLicenses' : IDL.Func(
         [],
@@ -373,18 +423,25 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'get_tier' : IDL.Func([IDL.Text], [Result_5], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'list_tiers' : IDL.Func([], [Result_4], ['query']),
     'registerBotPublicKey' : IDL.Func([IDL.Vec(IDL.Nat8)], [], []),
     'revokeLicense' : IDL.Func([AccountId], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'setBotUrl' : IDL.Func([IDL.Text], [Result_2], []),
-    'storeJwt' : IDL.Func([IDL.Text, AccountId], [Result_1], []),
-    'storeStrategicVault' : IDL.Func([StrategicVault, AccountId], [Result], []),
+    'setBotUrl' : IDL.Func([IDL.Text], [Result_3], []),
+    'storeJwt' : IDL.Func([IDL.Text, AccountId], [Result_2], []),
+    'storeStrategicVault' : IDL.Func(
+        [StrategicVault, AccountId],
+        [Result_1],
+        [],
+      ),
     'submitTrade' : IDL.Func(
         [Trade, IDL.Vec(IDL.Nat8), IDL.Text, Time],
         [],
         [],
       ),
+    'toggle_tier_active' : IDL.Func([IDL.Text, IDL.Bool], [Result], []),
     'toggle_uplink' : IDL.Func([IDL.Bool], [], []),
     'transform' : IDL.Func(
         [TransformationInput],
@@ -392,6 +449,21 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'update_profile' : IDL.Func([UserProfile], [], []),
+    'update_tier' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Record({
+            'features' : IDL.Opt(IDL.Vec(IDL.Text)),
+            'active' : IDL.Opt(IDL.Bool),
+            'maxApiCalls' : IDL.Opt(IDL.Opt(IDL.Nat)),
+            'name' : IDL.Opt(IDL.Text),
+            'maxBots' : IDL.Opt(IDL.Opt(IDL.Nat)),
+            'priceInCents' : IDL.Opt(IDL.Nat),
+          }),
+        ],
+        [Result],
+        [],
+      ),
   });
 };
 
