@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 15,
+  "projectStateVersion": 19,
   "summary": "Expand backend fixes to include `check_uplink` improvements (stable `botIdIndex`, indexed lookup, non-empty signature + TODO for Ed25519 verification) and update `fetchSignals` in `backend/main.mo` to return structured HTTP outcall response data (statusCode/body/timestamp), add an audit entry with first 100 chars of the response, and update public types—without modifying other endpoints.",
   "architectural_notes": [
     "Stripe integration must not modify backend/stripe/stripe.mo; actor should store optional stable StripeConfiguration and call Stripe.createCheckoutSession/getSessionStatus using existing transform function.",
@@ -10,12 +10,15 @@
     "Access control rules: use AccessControl.hasPermission for user checks and AccessControl.isAdmin for admin checks.",
     "Cycle balance API constraint: Runtime.cyclesBalance() is not available in the current Motoko version; use ExperimentalCycles.balance() if available, otherwise set cycles to 0 and add comment `// TODO: Replace with actual cycle balance API when available.`",
     "For `check_uplink` performance and correctness, maintain a stable `botIdIndex` (bot_id → owner Principal) updated in `saveCallerUserProfile`, and use it instead of scanning all `userProfiles`. Enforce non-empty signature with a trap and include a Phase 2 TODO for full Ed25519 verification.",
-    "Connect Bot Wizard must generate a real Ed25519 keypair (TweetNaCl preferred) so the registered publicKey corresponds to the user’s private key; avoid unrelated random byte arrays."
+    "Connect Bot Wizard must generate a real Ed25519 keypair (TweetNaCl preferred) so the registered publicKey corresponds to the user’s private key; avoid unrelated random byte arrays.",
+    "Ed25519 key generation constraint update: TweetNaCl and WebCrypto Ed25519 are not available; Connect Bot Wizard must use `@noble/ed25519` as primary. If noble is also unavailable, fall back to a 32-byte random seed and include comment `// TODO: Replace with real Ed25519 derivation in production.`; do not change any other wizard behavior.",
+    "Build/deploy scope clarified: retry only the last failed deploy step (backend `getHeartbeatData` / `fetchSignals` changes), not the full backend+frontend+Stripe+keypair set."
   ],
   "known_issues": [
     "Repeated build attempts for the getHeartbeatData change failed with the assistant reporting it 'couldn't implement that request'; root cause not identified in conversation.",
     "Motoko version lacks Runtime.cyclesBalance(); heartbeat cycles must use ExperimentalCycles.balance() or fall back to 0 with a TODO comment.",
-    "Attempt to implement the `fetchSignals` structured HTTP response return and type change failed (assistant reported inability to implement); retry requested with smaller substeps."
+    "Attempt to implement the `fetchSignals` structured HTTP response return and type change failed (assistant reported inability to implement); retry requested with smaller substeps.",
+    "Environment constraint: TweetNaCl and WebCrypto Ed25519 are unavailable; keypair generation must switch to `@noble/ed25519` or use the specified random-seed placeholder fallback."
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -56,6 +59,14 @@
       "title": "Replace the existing `handleGenerateKeypair` implementation in `frontend/src/components/settings/ConnectBotWizardModal.tsx` with the Ed25519 key generation flow specified by the user: generate the keypair, display the private key as a hex string (BOT_PRIVATE_KEY), and keep the public key as a `Uint8Array` for sending to the backend; keep all other wizard steps, UI behaviors (blur/copy), and the existing `linkMutation` call flow unchanged.",
       "reqIds": [
         "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-src-components-settings-connectbotwizardmodal-tsx-handlegeneratekeypair-so-it-no-longer-uses-tweetnacl-or-web-crypto-ed25519-instead-generate-the-keypair-using-noble-ed25519-exactly-as-follows-import-as-ed-from-noble-ed25519-const-privatekey-ed-utils-randomprivatekey-const-publickey-await-ed-getpublickeyasync-privatekey-display-the-private-key-as-a-hex-string-for-bot-private-key-and-keep-the-public-key-as-a-uint8array-for-sending-to-the-backend-if-noble-ed25519-is-not-available-at-runtime-build-time-fall-back-to-generating-a-32-byte-random-seed-and-produce-a-placeholder-derived-public-key-including-the-exact-comment-todo-replace-with-real-ed25519-derivation-in-production-do-not-change-any-other-ui-steps-blur-copy-behavior-or-the-existing-linkmutation-call-flow",
+      "title": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` `handleGenerateKeypair` so it no longer uses TweetNaCl or Web Crypto Ed25519. Instead, generate the keypair using `@noble/ed25519` exactly as follows: `import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);`. Display the private key as a hex string (for BOT_PRIVATE_KEY) and keep the public key as a `Uint8Array` for sending to the backend. If `@noble/ed25519` is not available at runtime/build-time, fall back to generating a 32-byte random seed and produce a placeholder derived public key, including the exact comment: `// TODO: Replace with real Ed25519 derivation in production.` Do not change any other UI, steps, blur/copy behavior, or the existing `linkMutation` call flow.",
+      "reqIds": [
+        "REQ-24"
       ],
       "version": 1
     }
@@ -242,6 +253,36 @@
       "summary": "If TweetNaCl is not currently present in the project dependencies, add it as a frontend dependency so `import nacl from 'tweetnacl'` compiles and runs; do not introduce any other dependency changes beyond what is required to support the Ed25519 keypair generation fix.",
       "reqIds": [
         "REQ-23"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Update Connect Bot Wizard `handleGenerateKeypair` implementation to use `@noble/ed25519` as the primary Ed25519 keypair generator (since TweetNaCl and WebCrypto Ed25519 are unavailable): `import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);`. If `@noble/ed25519` is also unavailable, fall back to generating a 32-byte random seed and set/derive a placeholder public key with the comment `// TODO: Replace with real Ed25519 derivation in production.`. Do not change anything else in the component.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "Update `backend/main.mo` `getHeartbeatData(accountId)` to return real, non-hardcoded data derived from existing canister state while preserving the same public method name and access control.\n- Look up the caller’s `BotProfile` from `botProfiles` and use it to set `botStatus` (`#ACTIVE` only when a bot profile exists and `uplinkStatus == true`, otherwise `#SUSPENDED`) and `lastHeartbeatAt` (use `botProfile.lastHeartbeat` when present, otherwise `0`).\n- Determine `verifiedLicense` by looking up the caller’s `UserProfile` in `userProfiles`, reading `accountId`, then checking `licenses.get(accountId)` and returning `true` only if a license exists and `active == true`.\n- Keep `cycles` retrieval constrained to the current Motoko environment: if a cycle-balance API is not available, keep `cycles = 0` and include the exact comment `// TODO: Replace with actual cycle balance API when available.` (do not introduce other cycle APIs).\n- Populate `cyclesWarning : ?Text` when `cycles < 500_000_000_000`, otherwise `null`.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "Harden `backend/main.mo` `fetchSignals()` success-path audit logging so it never traps when creating the response snippet:\n- Keep returning the structured success result shape `#ok({ statusCode : Nat; body : Text; timestamp : Int })`.\n- When creating the audit-log snippet, include the full response body if `response.size() <= 100`, otherwise include only the first 100 characters.\n- Ensure any slicing/substring logic uses bounds-safe end indices (no out-of-range slicing).",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Fix `backend/main.mo` `saveCallerUserProfile` bot-id indexing logic so `botIdIndex` correctly removes the previous `bot_id` mapping when the caller changes their `bot_id`.\n- Capture the prior profile (if any) before overwriting `userProfiles`.\n- After saving the new profile, if the old profile had a different `bot_id`, remove the old mapping from `botIdIndex`.\n- If the new profile has `bot_id = ?Text`, set/overwrite `botIdIndex[newBotId] = caller`.\n- If the new profile has `bot_id = null`, do not add a new index entry (and remove the old one if it existed).",
+      "reqIds": [
+        "REQ-27"
       ],
       "status": "pending"
     }

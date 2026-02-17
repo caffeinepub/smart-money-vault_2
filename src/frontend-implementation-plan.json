@@ -1,55 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Ed25519 keypair generation in Connect Bot Wizard",
-  "requirements": [
-    {
-      "id": "REQ-21",
-      "summary": "Generate a cryptographically valid Ed25519 keypair in Connect Bot Wizard, preferring TweetNaCl with fallbacks to @noble/ed25519 or Web Crypto Ed25519.",
-      "acceptanceCriteria": [
-        "Clicking “Generate Bot Identity” results in a cryptographically valid Ed25519 keypair where the generated `publicKey` corresponds to the generated private key (no unrelated random buffers).",
-        "The implementation prefers `import nacl from 'tweetnacl'` and uses `nacl.sign.keyPair()` when TweetNaCl is available.",
-        "When using TweetNaCl, the wizard stores `publicKey` as `Uint8Array(32)` and displays/stores the private key as a hex string derived from the 64-byte `secretKey` (`Uint8Array(64)`) returned by TweetNaCl.",
-        "If TweetNaCl is unavailable, the implementation uses `@noble/ed25519` to generate a proper Ed25519 keypair; if dependency installation is not possible, it uses Web Crypto API Ed25519 and exports raw keys into `Uint8Array` as needed."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/settings/ConnectBotWizardModal.tsx",
-          "operation": "modify",
-          "description": "Update Ed25519 key generation to prefer TweetNaCl (import nacl from 'tweetnacl' and use nacl.sign.keyPair()) to produce a matching publicKey (Uint8Array(32)) and private key hex derived from nacl secretKey (Uint8Array(64)); if TweetNaCl cannot be used, fall back to @noble/ed25519 (generate 32-byte private key, derive public key, and format the displayed private key as hex of a 64-byte secret (private||public)); if neither dependency can be used, fall back to Web Crypto API Ed25519 generateKey and export keys (prefer JWK export to obtain matching 'd' and 'x' values, convert base64url to bytes, and format displayed private key hex as 64-byte (d||x)), while keeping all existing wizard steps and UI unchanged. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-22",
-      "summary": "Replace only handleGenerateKeypair logic to generate/display private key hex and retain public key Uint8Array for backend linking, leaving wizard flow and linkMutation usage unchanged.",
-      "acceptanceCriteria": [
-        "Only `handleGenerateKeypair` logic is changed within `frontend/src/components/settings/ConnectBotWizardModal.tsx`; all other steps, labels, buttons, and mutation calls behave exactly as before.",
-        "The generated private key shown to the user is a hex string derived from the key generation output (TweetNaCl `secretKey` preferred).",
-        "`handleLinkPublicKey` continues to send the generated `Uint8Array` public key to `linkMutation.mutateAsync(...)` without additional transformations."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/settings/ConnectBotWizardModal.tsx",
-          "operation": "modify",
-          "description": "Replace the existing handleGenerateKeypair implementation with the specified Ed25519 flow: generate a real keypair, store publicKey as Uint8Array for backend linking, display/store BOT_PRIVATE_KEY as a hex string derived from the generated secret/private material (TweetNaCl secretKey preferred), and keep the rest of the wizard flow (generate -> reveal -> link -> url -> done), blur/copy UI, and existing linkMutation call behavior unchanged. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-23",
-      "summary": "Add TweetNaCl as the minimal required frontend dependency so the wizard can import and use it.",
-      "acceptanceCriteria": [
-        "The frontend builds successfully with `import nacl from 'tweetnacl'` used in `ConnectBotWizardModal.tsx` (or uses the specified fallback when TweetNaCl cannot be added).",
-        "No unrelated dependency updates are introduced."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/package.json",
-          "operation": "modify",
-          "description": "Add the minimal frontend dependency on `tweetnacl` (and only what is strictly required for the Ed25519 keypair generation fix) so `import nacl from 'tweetnacl'` in ConnectBotWizardModal.tsx compiles and runs; avoid unrelated dependency changes."
-        }
-      ]
-    }
-  ]
+  "title": "Smart Money Vault — Frontend plan (no changes for backend-only retry)",
+  "requirements": []
 }

@@ -14,7 +14,9 @@ import Stripe "stripe/stripe";
 import Nat "mo:core/Nat";
 import Float "mo:core/Float";
 import Char "mo:core/Char";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -147,23 +149,30 @@ actor {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
 
+    // Store the prior profile before overwriting
+    let priorProfile = userProfiles.get(caller);
+
+    // Save the new profile
     userProfiles.add(caller, profile);
 
-    switch (profile.bot_id) {
-      case (?botId) {
-        switch (userProfiles.get(caller)) {
-          case (?existingProfile) {
-            switch (existingProfile.bot_id) {
-              case (?oldBotId) {
-                if (oldBotId != botId) {
-                  botIdIndex.remove(oldBotId);
-                };
-              };
-              case (null) {};
+    // Remove old mapping if the bot_id has changed
+    switch (priorProfile) {
+      case (?oldProfile) {
+        switch (oldProfile.bot_id) {
+          case (?oldBotId) {
+            if (profile.bot_id != oldProfile.bot_id) {
+              botIdIndex.remove(oldBotId);
             };
           };
           case (null) {};
         };
+      };
+      case (null) {};
+    };
+
+    // Add new mapping if a bot_id exists
+    switch (profile.bot_id) {
+      case (?botId) {
         botIdIndex.add(botId, caller);
       };
       case (null) {};
@@ -174,23 +183,31 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can update profiles");
     };
+
+    // Store the prior profile before overwriting
+    let priorProfile = userProfiles.get(caller);
+
+    // Save the new profile
     userProfiles.add(caller, profile);
 
-    switch (profile.bot_id) {
-      case (?botId) {
-        switch (userProfiles.get(caller)) {
-          case (?existingProfile) {
-            switch (existingProfile.bot_id) {
-              case (?oldBotId) {
-                if (oldBotId != botId) {
-                  botIdIndex.remove(oldBotId);
-                };
-              };
-              case (null) {};
+    // Remove old mapping if the bot_id has changed
+    switch (priorProfile) {
+      case (?oldProfile) {
+        switch (oldProfile.bot_id) {
+          case (?oldBotId) {
+            if (profile.bot_id != oldProfile.bot_id) {
+              botIdIndex.remove(oldBotId);
             };
           };
           case (null) {};
         };
+      };
+      case (null) {};
+    };
+
+    // Add new mapping if a bot_id exists
+    switch (profile.bot_id) {
+      case (?botId) {
         botIdIndex.add(botId, caller);
       };
       case (null) {};
@@ -413,12 +430,45 @@ actor {
       Runtime.trap("Unauthorized: Only authenticated users can view heartbeat data");
     };
 
+    // Start with system defaults
     let cycles = 0; // TODO: Replace with actual cycle balance API when available.
-    let lastHeartbeatAt = Time.now();
-    let botStatus = #ACTIVE;
-    let verifiedLicense = true;
-    var cyclesWarning : ?Text = null;
+    var botStatus : Status = #SUSPENDED;
+    var lastHeartbeatAt : Time.Time = 0;
+    var verifiedLicense : Bool = false;
 
+    // Check for bot profile (from state, not hardcoded)
+    switch (botProfiles.get(caller)) {
+      case (?botProfile) {
+        if (botProfile.uplinkStatus) {
+          botStatus := #ACTIVE;
+        };
+        lastHeartbeatAt := botProfile.lastHeartbeat;
+
+        switch (userProfiles.get(caller)) {
+          case (?userProfile) {
+            switch (userProfile.accountId) {
+              case (?ai) {
+                switch (licenses.get(ai)) {
+                  case (?license) {
+                    verifiedLicense := license.active;
+                  };
+                  case (null) { verifiedLicense := false };
+                };
+              };
+              case (null) { verifiedLicense := false };
+            };
+          };
+          case (null) { verifiedLicense := false };
+        };
+      };
+      case (null) {
+        botStatus := #SUSPENDED;
+        lastHeartbeatAt := 0;
+        verifiedLicense := false;
+      };
+    };
+
+    var cyclesWarning : ?Text = null;
     if (cycles < 500_000_000_000) {
       cyclesWarning := ?("Low cycles: " # cycles.toText());
     };
@@ -692,7 +742,8 @@ actor {
             };
             botProfiles.add(caller, updatedProfile);
 
-            let bodyChars = response.toArray().sliceToArray(0, 100);
+            let snippetLength = if (response.size() <= 100) { response.size() } else { 100 };
+            let bodyChars = response.toArray().sliceToArray(0, snippetLength);
             let bodySnippet = Text.fromArray(bodyChars);
 
             addAuditEntry(caller, "FETCH_SIGNALS", "Signals fetched: " # bodySnippet);

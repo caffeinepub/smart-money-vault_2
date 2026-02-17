@@ -68,9 +68,9 @@ export interface License {
 export type SignalFetchResult = {
     __kind__: "ok";
     ok: {
-        statusCode: bigint;
         body: string;
         timestamp: bigint;
+        statusCode: bigint;
     };
 } | {
     __kind__: "err";

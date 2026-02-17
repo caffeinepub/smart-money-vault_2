@@ -1,54 +1,45 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T01:21:21.677Z",
+  "generatedAt": "2026-02-17T01:40:27.174Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 3,
-    "implemented": 2,
+    "implemented": 0,
     "items": [
       {
-        "id": "REQ-21",
-        "summary": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` so the Connect Bot Wizard generates a real Ed25519 keypair (where the public key matches the private key) using TweetNaCl (`tweetnacl`) if available; if TweetNaCl is not available, use `@noble/ed25519` instead, and if dependency installation is not possible, fall back to Web Crypto API Ed25519 key generation.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/settings/ConnectBotWizardModal.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/settings/ConnectBotWizardModal.tsx"
-        ]
+        "id": "REQ-25",
+        "summary": "Update `backend/main.mo` `getHeartbeatData(accountId)` to return real, non-hardcoded data derived from existing canister state while preserving the same public method name and access control.\n- Look up the caller’s `BotProfile` from `botProfiles` and use it to set `botStatus` (`#ACTIVE` only when a bot profile exists and `uplinkStatus == true`, otherwise `#SUSPENDED`) and `lastHeartbeatAt` (use `botProfile.lastHeartbeat` when present, otherwise `0`).\n- Determine `verifiedLicense` by looking up the caller’s `UserProfile` in `userProfiles`, reading `accountId`, then checking `licenses.get(accountId)` and returning `true` only if a license exists and `active == true`.\n- Keep `cycles` retrieval constrained to the current Motoko environment: if a cycle-balance API is not available, keep `cycles = 0` and include the exact comment `// TODO: Replace with actual cycle balance API when available.` (do not introduce other cycle APIs).\n- Populate `cyclesWarning : ?Text` when `cycles < 500_000_000_000`, otherwise `null`.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
-        "id": "REQ-22",
-        "summary": "Replace the existing `handleGenerateKeypair` implementation in `frontend/src/components/settings/ConnectBotWizardModal.tsx` with the Ed25519 key generation flow specified by the user: generate the keypair, display the private key as a hex string (BOT_PRIVATE_KEY), and keep the public key as a `Uint8Array` for sending to the backend; keep all other wizard steps, UI behaviors (blur/copy), and the existing `linkMutation` call flow unchanged.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/settings/ConnectBotWizardModal.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/settings/ConnectBotWizardModal.tsx"
-        ]
+        "id": "REQ-26",
+        "summary": "Harden `backend/main.mo` `fetchSignals()` success-path audit logging so it never traps when creating the response snippet:\n- Keep returning the structured success result shape `#ok({ statusCode : Nat; body : Text; timestamp : Int })`.\n- When creating the audit-log snippet, include the full response body if `response.size() <= 100`, otherwise include only the first 100 characters.\n- Ensure any slicing/substring logic uses bounds-safe end indices (no out-of-range slicing).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
-        "id": "REQ-23",
-        "summary": "If TweetNaCl is not currently present in the project dependencies, add it as a frontend dependency so `import nacl from 'tweetnacl'` compiles and runs; do not introduce any other dependency changes beyond what is required to support the Ed25519 keypair generation fix.",
-        "status": "missing",
-        "plannedFiles": [
-          "frontend/package.json"
-        ],
+        "id": "REQ-27",
+        "summary": "Fix `backend/main.mo` `saveCallerUserProfile` bot-id indexing logic so `botIdIndex` correctly removes the previous `bot_id` mapping when the caller changes their `bot_id`.\n- Capture the prior profile (if any) before overwriting `userProfiles`.\n- After saving the new profile, if the old profile had a different `bot_id`, remove the old mapping from `botIdIndex`.\n- If the new profile has `bot_id = ?Text`, set/overwrite `botIdIndex[newBotId] = caller`.\n- If the new profile has `bot_id = null`, do not add a new index entry (and remove the old one if it existed).",
+        "status": "unknown",
+        "plannedFiles": [],
         "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
-    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/settings/ConnectBotWizardModal.tsx",
+    "frontend/src/backend.d.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

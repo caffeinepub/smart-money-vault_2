@@ -1,48 +1,48 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T01:21:21.674Z",
-  "summary": "The diff updates ConnectBotWizardModal key generation to use only the Web Crypto API and adds helper functions, but it does not implement the required TweetNaCl-preferred Ed25519 generation with @noble/ed25519 fallback, nor does it add TweetNaCl as a dependency. It also modifies additional files beyond the requested component.",
+  "generatedAt": "2026-02-17T01:40:27.171Z",
+  "summary": "Diff shows a new `backend/migration.mo` module and partial changes in `backend/main.mo` (notably capturing `priorProfile` in `saveCallerUserProfile`). The diff snippet does not show any changes to `getHeartbeatData` or `fetchSignals`, and the `saveCallerUserProfile` botIdIndex update/removal logic is not visible in the truncated content.",
   "missing_requirements": [
     {
-      "id": "REQ-21",
-      "requirement": "Generate a real Ed25519 keypair preferring TweetNaCl (nacl.sign.keyPair), otherwise @noble/ed25519, otherwise Web Crypto API Ed25519; when using TweetNaCl store publicKey as Uint8Array(32) and private key as hex of the 64-byte secretKey.",
-      "reason": "The implementation shown uses only Web Crypto API key generation and does not import or use TweetNaCl or @noble/ed25519, so the specified preference/fallback chain and TweetNaCl-specific handling are not implemented.",
+      "id": "REQ-25",
+      "requirement": "Update `backend/main.mo` `getHeartbeatData(accountId)` to return real, non-hardcoded data derived from canister state (botStatus/lastHeartbeatAt from botProfiles+uplinkStatus; verifiedLicense from userProfiles.accountId + licenses.active; cycles=0 with exact TODO comment if no API; cyclesWarning threshold behavior), without modifying other public endpoints.",
+      "reason": "No evidence in the provided `backend/main.mo` diff excerpt that `getHeartbeatData` was added/modified or that the required state-derived fields, cycles TODO comment, or cyclesWarning logic were implemented.",
       "evidence": [
-        "frontend/src/components/settings/ConnectBotWizardModal.tsx (handleGenerateKeypair uses window.crypto.subtle.generateKey/exportKey; no tweetnacl/@noble usage present in shown diff)"
+        "backend/main.mo (truncated; no `getHeartbeatData` content shown)"
       ]
     },
     {
-      "id": "REQ-22",
-      "requirement": "Replace only the existing handleGenerateKeypair logic with the specified Ed25519 generation flow; keep all other wizard logic/steps unchanged; keep publicKey as Uint8Array and private key displayed as hex derived from generation output.",
-      "reason": "The diff adds/changes code outside of handleGenerateKeypair (new helper functions base64UrlToUint8Array and bytesToHex at module scope). This violates the 'only handleGenerateKeypair logic is changed' acceptance criterion. Also, the specified generation flow (TweetNaCl preferred, noble fallback) is not implemented.",
+      "id": "REQ-26",
+      "requirement": "Harden `fetchSignals()` success-path audit logging to avoid traps when creating the response snippet (<=100 full body else first 100 chars), keep `#ok({ statusCode; body; timestamp })` with timestamp from `Time.now()`, and keep existing #err behaviors/messages unchanged.",
+      "reason": "No evidence in the provided `backend/main.mo` diff excerpt that `fetchSignals` was modified, that the structured ok payload is returned as specified, or that bounds-safe snippet logic and required audit-log prefix were implemented.",
       "evidence": [
-        "frontend/src/components/settings/ConnectBotWizardModal.tsx (adds base64UrlToUint8Array and bytesToHex helpers outside handleGenerateKeypair)"
+        "backend/main.mo (truncated; no `fetchSignals` content shown)"
       ]
     },
     {
-      "id": "REQ-23",
-      "requirement": "If TweetNaCl is not present, add it as a frontend dependency so `import nacl from 'tweetnacl'` compiles and runs; no unrelated dependency updates.",
-      "reason": "No dependency manifest changes are shown, and the component does not import `tweetnacl`, so there is no evidence TweetNaCl was added or used.",
+      "id": "REQ-27",
+      "requirement": "Fix `saveCallerUserProfile` bot-id indexing so `botIdIndex` removes previous `bot_id` mapping when changed/cleared and adds/overwrites mapping when new `bot_id` is set, while keeping signature/access control unchanged.",
+      "reason": "The diff shows `priorProfile` is captured before overwriting `userProfiles`, but the required follow-up logic (remove old mapping when bot_id changes or becomes null; add new mapping when present) is not shown in the truncated excerpt, so implementation cannot be confirmed.",
       "evidence": [
-        "File diff summary shows only 3 modified files; no package.json/yarn.lock/pnpm-lock changes are listed"
+        "backend/main.mo (shows `let priorProfile = userProfiles.get(caller);` and `userProfiles.add(caller, profile);` but truncates before any `botIdIndex` updates)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Modified additional non-target files unrelated to the Ed25519 keypair generation fix (frontend-file-summaries.txt and project_state.json).",
-      "reason": "The BuildRequest constrains changes to what is strictly necessary for the key generation fix (dependency manifests allowed only if required for TweetNaCl). These metadata/state files are not requested and do not appear necessary to implement key generation.",
+      "description": "Added a new backend migration module (`backend/migration.mo`) and wired it into `backend/main.mo` via `import Migration \"migration\";` and `(with migration = Migration.run)`.",
+      "reason": "The BuildRequest does not request adding a migration module or enabling migration wiring; it also constrains backend changes to what is necessary for `getHeartbeatData`, `fetchSignals` robustness, and `saveCallerUserProfile` botIdIndex correctness.",
       "evidence": [
-        "frontend-file-summaries.txt (modified)",
-        "project_state.json (modified)"
+        "backend/migration.mo (new file)",
+        "backend/main.mo (includes `import Migration \"migration\";` and `(with migration = Migration.run)`)"
       ]
     }
   ],
-  "confidence": 0.74,
+  "confidence": 0.66,
   "changed_files": [
-    "frontend-file-summaries.txt",
-    "frontend/src/components/settings/ConnectBotWizardModal.tsx",
+    "backend/main.mo",
+    "backend/migration.mo",
     "project_state.json"
   ]
 }

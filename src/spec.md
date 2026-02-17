@@ -1,11 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Fix Ed25519 keypair generation in the Connect Bot Wizard so it produces a valid keypair and keeps the existing wizard flow unchanged.
+**Goal:** Retry the backend deploy by replacing placeholder heartbeat data with real canister-state-derived values, hardening `fetchSignals()` success-path audit logging, and fixing bot-id indexing updates in `saveCallerUserProfile`.
 
 **Planned changes:**
-- Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` to replace `handleGenerateKeypair` with a real Ed25519 keypair generation flow that prefers TweetNaCl (`import nacl from 'tweetnacl'`), falls back to `@noble/ed25519` if needed, and finally to Web Crypto API Ed25519 if dependencies cannot be used.
-- Ensure the wizard stores the generated `publicKey` as a `Uint8Array(32)` for backend linking, and displays/stores the private key as a hex string derived from the generated secret/private key material (TweetNaCl `secretKey` preferred).
-- If TweetNaCl is not present, add `tweetnacl` as the minimal required frontend dependency so the import compiles and runs (no unrelated dependency changes).
+- Update `getHeartbeatData(accountId)` to compute `botStatus`, `lastHeartbeatAt`, and `verifiedLicense` from existing `botProfiles`, `userProfiles`, and `licenses` state while preserving the existing method name and access control.
+- Keep `cycles` limited to the current Motoko environment (use `0` when no cycle-balance API is available, with the exact TODO comment) and add `cyclesWarning` when below the threshold.
+- Harden `fetchSignals()` success-path audit logging to safely include either the full response body (<= 100 chars) or the first 100 characters (> 100 chars) without any out-of-range slicing, while keeping the structured `#ok({ statusCode; body; timestamp })` response.
+- Fix `saveCallerUserProfile` so `botIdIndex` removes any previous `bot_id` mapping when a caller changes or clears their `bot_id`, and correctly sets the new mapping when provided.
 
-**User-visible outcome:** Clicking “Generate Bot Identity” reliably generates and shows a valid Ed25519 private key (hex) and links the matching public key through the existing wizard steps without any UI/flow changes.
+**User-visible outcome:** Heartbeat status/verification reflects real stored user/bot/license state, signal fetching no longer risks trapping due to audit-log snippet creation, and changing a user’s `bot_id` correctly updates lookup/index behavior.

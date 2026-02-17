@@ -1,79 +1,83 @@
 {
   "kind": "build_request",
-  "title": "Fix Ed25519 keypair generation in Connect Bot Wizard",
-  "projectName": "SmartMoneyVault",
+  "title": "Retry backend deploy: real heartbeat data + robust fetchSignals structured response",
+  "projectName": "Smart Money Vault",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-21",
-      "text": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` so the Connect Bot Wizard generates a real Ed25519 keypair (where the public key matches the private key) using TweetNaCl (`tweetnacl`) if available; if TweetNaCl is not available, use `@noble/ed25519` instead, and if dependency installation is not possible, fall back to Web Crypto API Ed25519 key generation.",
-      "target": "frontend",
+      "id": "REQ-25",
+      "text": "Update `backend/main.mo` `getHeartbeatData(accountId)` to return real, non-hardcoded data derived from existing canister state while preserving the same public method name and access control.\n- Look up the caller’s `BotProfile` from `botProfiles` and use it to set `botStatus` (`#ACTIVE` only when a bot profile exists and `uplinkStatus == true`, otherwise `#SUSPENDED`) and `lastHeartbeatAt` (use `botProfile.lastHeartbeat` when present, otherwise `0`).\n- Determine `verifiedLicense` by looking up the caller’s `UserProfile` in `userProfiles`, reading `accountId`, then checking `licenses.get(accountId)` and returning `true` only if a license exists and `active == true`.\n- Keep `cycles` retrieval constrained to the current Motoko environment: if a cycle-balance API is not available, keep `cycles = 0` and include the exact comment `// TODO: Replace with actual cycle balance API when available.` (do not introduce other cycle APIs).\n- Populate `cyclesWarning : ?Text` when `cycles < 500_000_000_000`, otherwise `null`.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-4",
+          "msg-5"
         ],
         "quotes": [
-          "Fix the Ed25519 key generation in the Connect Bot Wizard.",
-          "Import tweetnacl: import nacl from 'tweetnacl'. If tweetnacl is not available, use @noble/ed25519 instead.",
-          "If Caffeine cannot install npm packages, use the Web Crypto API: const keyPair = await crypto.subtle.generateKey({ name: \"Ed25519\" }, true, [\"sign\", \"verify\"])."
+          "2",
+          "Yes build now"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking “Generate Bot Identity” results in a cryptographically valid Ed25519 keypair where the generated `publicKey` corresponds to the generated private key (no unrelated random buffers).",
-        "The implementation prefers `import nacl from 'tweetnacl'` and uses `nacl.sign.keyPair()` when TweetNaCl is available.",
-        "When using TweetNaCl, the wizard stores `publicKey` as `Uint8Array(32)` and displays/stores the private key as a hex string derived from the 64-byte `secretKey` (`Uint8Array(64)`) returned by TweetNaCl.",
-        "If TweetNaCl is unavailable, the implementation uses `@noble/ed25519` to generate a proper Ed25519 keypair; if dependency installation is not possible, it uses Web Crypto API Ed25519 and exports raw keys into `Uint8Array` as needed."
+        "Calling `getHeartbeatData` as an authenticated user returns a `HeartbeatData` where `botStatus`, `lastHeartbeatAt`, and `verifiedLicense` reflect the caller’s stored `BotProfile`/`UserProfile`/`licenses` state (no placeholder values).",
+        "If the caller has no `BotProfile`, `botStatus` is `#SUSPENDED` and `lastHeartbeatAt` is `0`.",
+        "If the caller has no `UserProfile.accountId`, or no license entry, or the license is inactive, then `verifiedLicense` is `false`; otherwise `true`.",
+        "`cyclesWarning` is `null` when `cycles >= 500_000_000_000` and is `?Text` when below that threshold.",
+        "No other public endpoints’ signatures or behaviors are modified."
       ]
     },
     {
-      "id": "REQ-22",
-      "text": "Replace the existing `handleGenerateKeypair` implementation in `frontend/src/components/settings/ConnectBotWizardModal.tsx` with the Ed25519 key generation flow specified by the user: generate the keypair, display the private key as a hex string (BOT_PRIVATE_KEY), and keep the public key as a `Uint8Array` for sending to the backend; keep all other wizard steps, UI behaviors (blur/copy), and the existing `linkMutation` call flow unchanged.",
-      "target": "frontend",
+      "id": "REQ-26",
+      "text": "Harden `backend/main.mo` `fetchSignals()` success-path audit logging so it never traps when creating the response snippet:\n- Keep returning the structured success result shape `#ok({ statusCode : Nat; body : Text; timestamp : Int })`.\n- When creating the audit-log snippet, include the full response body if `response.size() <= 100`, otherwise include only the first 100 characters.\n- Ensure any slicing/substring logic uses bounds-safe end indices (no out-of-range slicing).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-4",
+          "msg-5"
         ],
         "quotes": [
-          "Replace handleGenerateKeypair: - Generate a real Ed25519 keypair: nacl.sign.keyPair()",
-          "Display secretKey as hex string (this is the BOT_PRIVATE_KEY)",
-          "Store publicKey as Uint8Array for sending to backend",
-          "Keep the rest of the wizard flow unchanged: the blur/copy UI for private key display and the linkMutation call for public key.",
-          "Do not modify any other files or components."
+          "2",
+          "Yes build now"
         ]
       },
       "acceptanceCriteria": [
-        "Only `handleGenerateKeypair` logic is changed within `frontend/src/components/settings/ConnectBotWizardModal.tsx`; all other steps, labels, buttons, and mutation calls behave exactly as before.",
-        "The generated private key shown to the user is a hex string derived from the key generation output (TweetNaCl `secretKey` preferred).",
-        "`handleLinkPublicKey` continues to send the generated `Uint8Array` public key to `linkMutation.mutateAsync(...)` without additional transformations."
+        "When `OutCall.httpGetRequest` returns a response body shorter than 100 characters, `fetchSignals()` returns `#ok(...)` and adds an audit entry without trapping.",
+        "When the response body is longer than 100 characters, the audit log `details` field starts with the exact prefix `Signals fetched: ` followed by exactly the first 100 characters of the response.",
+        "The returned `#ok` payload contains `statusCode = 200`, the full `body` text, and `timestamp` set from `Time.now()` (as an `Int`).",
+        "Existing `#err` behaviors and messages for unauthorized access, missing bot profile, missing bot URL, and invalid URL remain unchanged."
       ]
     },
     {
-      "id": "REQ-23",
-      "text": "If TweetNaCl is not currently present in the project dependencies, add it as a frontend dependency so `import nacl from 'tweetnacl'` compiles and runs; do not introduce any other dependency changes beyond what is required to support the Ed25519 keypair generation fix.",
-      "target": "frontend",
+      "id": "REQ-27",
+      "text": "Fix `backend/main.mo` `saveCallerUserProfile` bot-id indexing logic so `botIdIndex` correctly removes the previous `bot_id` mapping when the caller changes their `bot_id`.\n- Capture the prior profile (if any) before overwriting `userProfiles`.\n- After saving the new profile, if the old profile had a different `bot_id`, remove the old mapping from `botIdIndex`.\n- If the new profile has `bot_id = ?Text`, set/overwrite `botIdIndex[newBotId] = caller`.\n- If the new profile has `bot_id = null`, do not add a new index entry (and remove the old one if it existed).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-4",
+          "msg-5"
         ],
         "quotes": [
-          "If tweetnacl is not installed as a dependency: Add it. In the package.json or equivalent, add tweetnacl."
+          "2",
+          "Yes build now"
         ]
       },
       "acceptanceCriteria": [
-        "The frontend builds successfully with `import nacl from 'tweetnacl'` used in `ConnectBotWizardModal.tsx` (or uses the specified fallback when TweetNaCl cannot be added).",
-        "No unrelated dependency updates are introduced."
+        "Updating a user profile from `bot_id = ?\"A\"` to `bot_id = ?\"B\"` results in `botIdIndex` no longer containing `A` and containing `B -> caller`.",
+        "Updating a user profile from `bot_id = ?\"A\"` to `bot_id = null` results in `botIdIndex` no longer containing `A`.",
+        "Existing access-control behavior and the public signature of `saveCallerUserProfile` remain unchanged."
       ]
     }
   ],
   "constraints": [
-    "Use English for any user-facing text.",
-    "Do not modify any other files or components beyond what is strictly necessary to implement the Ed25519 keypair generation fix (dependency manifest edits are allowed only if required to add TweetNaCl).",
-    "Keep the Connect Bot Wizard flow unchanged (generate -> reveal -> link -> url -> done), including the existing blur/copy UI and the existing `linkMutation` call for public key linking.",
-    "Do not edit any frontend paths marked immutable by the system context (e.g., `frontend/src/hooks/useActor.ts`, `frontend/src/main.tsx`, and `frontend/src/components/ui/*`)."
+    "Backend must remain a single Motoko actor in `backend/main.mo` (no additional backend services).",
+    "Do not modify any other backend endpoints beyond what is necessary to implement `getHeartbeatData`, `fetchSignals` robustness, and `saveCallerUserProfile` botIdIndex correctness.",
+    "Keep the exact comment `// TODO: Replace with actual cycle balance API when available.` when `cycles` is forced to `0`.",
+    "User-facing text in traps/errors/toasts must be English."
   ],
   "nonGoals": [
-    "Implementing backend-side Ed25519 signature verification (this is explicitly deferred elsewhere).",
-    "Changing the Connect Bot Wizard UI/UX, step order, validation rules, or mutation hook behavior beyond the key generation logic."
+    "Do not implement or modify Stripe actor wiring (`backend/stripe/stripe.mo` integration) as part of this retry.",
+    "Do not add new frontend features; frontend changes related to these backend shapes are already tracked as existing features.",
+    "Do not implement full Ed25519 signature verification in `check_uplink` (it should remain TODO)."
   ],
   "imageRequirements": {
     "required": [],
