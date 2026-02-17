@@ -17,14 +17,21 @@ export const UplinkStatus = IDL.Variant({
   'EXECUTE' : IDL.Null,
   'STANDBY' : IDL.Null,
 });
+export const ShoppingItem = IDL.Record({
+  'productName' : IDL.Text,
+  'currency' : IDL.Text,
+  'quantity' : IDL.Nat,
+  'priceInCents' : IDL.Nat,
+  'productDescription' : IDL.Text,
+});
 export const AccountId = IDL.Text;
 export const SubscriptionTier = IDL.Record({
   'id' : IDL.Text,
   'features' : IDL.Vec(IDL.Text),
   'active' : IDL.Bool,
-  'maxApiCalls' : IDL.Opt(IDL.Nat),
+  'maxApiCalls' : IDL.Nat,
   'name' : IDL.Text,
-  'maxBots' : IDL.Opt(IDL.Nat),
+  'maxBots' : IDL.Nat,
   'priceInCents' : IDL.Nat,
 });
 export const Error = IDL.Variant({
@@ -37,7 +44,7 @@ export const Error = IDL.Variant({
   'MissingBotKey' : IDL.Null,
   'ReplayDetected' : IDL.Null,
 });
-export const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : Error });
+export const Result_4 = IDL.Variant({ 'ok' : SubscriptionTier, 'err' : Error });
 export const Time = IDL.Int;
 export const Signal = IDL.Record({
   'direction' : IDL.Variant({ 'buy' : IDL.Null, 'sell' : IDL.Null }),
@@ -92,7 +99,15 @@ export const HeartbeatData = IDL.Record({
   'cycles' : IDL.Nat,
   'botStatus' : Status,
   'lastHeartbeatAt' : Time,
+  'cyclesWarning' : IDL.Opt(IDL.Text),
   'verifiedLicense' : IDL.Bool,
+});
+export const StripeSessionStatus = IDL.Variant({
+  'completed' : IDL.Record({
+    'userPrincipal' : IDL.Opt(IDL.Text),
+    'response' : IDL.Text,
+  }),
+  'failed' : IDL.Record({ 'error' : IDL.Text }),
 });
 export const TradeSide = IDL.Variant({ 'buy' : IDL.Null, 'sell' : IDL.Null });
 export const Trade = IDL.Record({
@@ -106,12 +121,15 @@ export const Trade = IDL.Record({
   'entryPrice' : IDL.Float64,
   'exitPrice' : IDL.Opt(IDL.Float64),
 });
-export const Result_5 = IDL.Variant({ 'ok' : SubscriptionTier, 'err' : Error });
-export const Result_4 = IDL.Variant({
+export const Result_3 = IDL.Variant({
   'ok' : IDL.Vec(SubscriptionTier),
   'err' : Error,
 });
-export const Result_3 = IDL.Variant({ 'ok' : IDL.Text, 'err' : Error });
+export const Result = IDL.Variant({ 'ok' : IDL.Text, 'err' : Error });
+export const StripeConfiguration = IDL.Record({
+  'allowedCountries' : IDL.Vec(IDL.Text),
+  'secretKey' : IDL.Text,
+});
 export const JwtToken = IDL.Record({
   'jwt' : IDL.Text,
   'accountId' : AccountId,
@@ -170,8 +188,13 @@ export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'check_uplink' : IDL.Func([IDL.Text, IDL.Vec(IDL.Nat8)], [UplinkStatus], []),
+  'createCheckoutSession' : IDL.Func(
+      [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
+      [IDL.Text],
+      [],
+    ),
   'createOrUpdateLicense' : IDL.Func([AccountId, IDL.Bool], [], []),
-  'create_tier' : IDL.Func([SubscriptionTier], [Result], []),
+  'create_tier' : IDL.Func([SubscriptionTier], [Result_4], []),
   'fetchSignals' : IDL.Func([], [SignalFetchResult], []),
   'getAllLicenses' : IDL.Func(
       [],
@@ -189,6 +212,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'getMyLicenseStatus' : IDL.Func([], [IDL.Opt(License)], ['query']),
+  'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
   'getTradesPaginated' : IDL.Func(
       [IDL.Opt(AccountId), IDL.Opt(Time), IDL.Opt(Time), IDL.Nat, IDL.Nat],
       [IDL.Vec(Trade)],
@@ -199,13 +223,15 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
-  'get_tier' : IDL.Func([IDL.Text], [Result_5], ['query']),
+  'get_tier' : IDL.Func([IDL.Text], [Result_4], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'list_tiers' : IDL.Func([], [Result_4], ['query']),
+  'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+  'list_tiers' : IDL.Func([], [Result_3], ['query']),
   'registerBotPublicKey' : IDL.Func([IDL.Vec(IDL.Nat8)], [], []),
   'revokeLicense' : IDL.Func([AccountId], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'setBotUrl' : IDL.Func([IDL.Text], [Result_3], []),
+  'setBotUrl' : IDL.Func([IDL.Text], [Result], []),
+  'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
   'storeJwt' : IDL.Func([IDL.Text, AccountId], [Result_2], []),
   'storeStrategicVault' : IDL.Func([StrategicVault, AccountId], [Result_1], []),
   'submitTrade' : IDL.Func([Trade, IDL.Vec(IDL.Nat8), IDL.Text, Time], [], []),
@@ -217,21 +243,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'update_profile' : IDL.Func([UserProfile], [], []),
-  'update_tier' : IDL.Func(
-      [
-        IDL.Text,
-        IDL.Record({
-          'features' : IDL.Opt(IDL.Vec(IDL.Text)),
-          'active' : IDL.Opt(IDL.Bool),
-          'maxApiCalls' : IDL.Opt(IDL.Opt(IDL.Nat)),
-          'name' : IDL.Opt(IDL.Text),
-          'maxBots' : IDL.Opt(IDL.Opt(IDL.Nat)),
-          'priceInCents' : IDL.Opt(IDL.Nat),
-        }),
-      ],
-      [Result],
-      [],
-    ),
+  'update_tier' : IDL.Func([IDL.Text, SubscriptionTier], [Result], []),
 });
 
 export const idlInitArgs = [];
@@ -246,14 +258,21 @@ export const idlFactory = ({ IDL }) => {
     'EXECUTE' : IDL.Null,
     'STANDBY' : IDL.Null,
   });
+  const ShoppingItem = IDL.Record({
+    'productName' : IDL.Text,
+    'currency' : IDL.Text,
+    'quantity' : IDL.Nat,
+    'priceInCents' : IDL.Nat,
+    'productDescription' : IDL.Text,
+  });
   const AccountId = IDL.Text;
   const SubscriptionTier = IDL.Record({
     'id' : IDL.Text,
     'features' : IDL.Vec(IDL.Text),
     'active' : IDL.Bool,
-    'maxApiCalls' : IDL.Opt(IDL.Nat),
+    'maxApiCalls' : IDL.Nat,
     'name' : IDL.Text,
-    'maxBots' : IDL.Opt(IDL.Nat),
+    'maxBots' : IDL.Nat,
     'priceInCents' : IDL.Nat,
   });
   const Error = IDL.Variant({
@@ -266,7 +285,7 @@ export const idlFactory = ({ IDL }) => {
     'MissingBotKey' : IDL.Null,
     'ReplayDetected' : IDL.Null,
   });
-  const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : Error });
+  const Result_4 = IDL.Variant({ 'ok' : SubscriptionTier, 'err' : Error });
   const Time = IDL.Int;
   const Signal = IDL.Record({
     'direction' : IDL.Variant({ 'buy' : IDL.Null, 'sell' : IDL.Null }),
@@ -318,7 +337,15 @@ export const idlFactory = ({ IDL }) => {
     'cycles' : IDL.Nat,
     'botStatus' : Status,
     'lastHeartbeatAt' : Time,
+    'cyclesWarning' : IDL.Opt(IDL.Text),
     'verifiedLicense' : IDL.Bool,
+  });
+  const StripeSessionStatus = IDL.Variant({
+    'completed' : IDL.Record({
+      'userPrincipal' : IDL.Opt(IDL.Text),
+      'response' : IDL.Text,
+    }),
+    'failed' : IDL.Record({ 'error' : IDL.Text }),
   });
   const TradeSide = IDL.Variant({ 'buy' : IDL.Null, 'sell' : IDL.Null });
   const Trade = IDL.Record({
@@ -332,12 +359,15 @@ export const idlFactory = ({ IDL }) => {
     'entryPrice' : IDL.Float64,
     'exitPrice' : IDL.Opt(IDL.Float64),
   });
-  const Result_5 = IDL.Variant({ 'ok' : SubscriptionTier, 'err' : Error });
-  const Result_4 = IDL.Variant({
+  const Result_3 = IDL.Variant({
     'ok' : IDL.Vec(SubscriptionTier),
     'err' : Error,
   });
-  const Result_3 = IDL.Variant({ 'ok' : IDL.Text, 'err' : Error });
+  const Result = IDL.Variant({ 'ok' : IDL.Text, 'err' : Error });
+  const StripeConfiguration = IDL.Record({
+    'allowedCountries' : IDL.Vec(IDL.Text),
+    'secretKey' : IDL.Text,
+  });
   const JwtToken = IDL.Record({ 'jwt' : IDL.Text, 'accountId' : AccountId });
   const Result_2 = IDL.Variant({ 'ok' : JwtToken, 'err' : Error });
   const Symbol = IDL.Record({
@@ -394,8 +424,13 @@ export const idlFactory = ({ IDL }) => {
         [UplinkStatus],
         [],
       ),
+    'createCheckoutSession' : IDL.Func(
+        [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
+        [IDL.Text],
+        [],
+      ),
     'createOrUpdateLicense' : IDL.Func([AccountId, IDL.Bool], [], []),
-    'create_tier' : IDL.Func([SubscriptionTier], [Result], []),
+    'create_tier' : IDL.Func([SubscriptionTier], [Result_4], []),
     'fetchSignals' : IDL.Func([], [SignalFetchResult], []),
     'getAllLicenses' : IDL.Func(
         [],
@@ -413,6 +448,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'getMyLicenseStatus' : IDL.Func([], [IDL.Opt(License)], ['query']),
+    'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
     'getTradesPaginated' : IDL.Func(
         [IDL.Opt(AccountId), IDL.Opt(Time), IDL.Opt(Time), IDL.Nat, IDL.Nat],
         [IDL.Vec(Trade)],
@@ -423,13 +459,15 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
-    'get_tier' : IDL.Func([IDL.Text], [Result_5], ['query']),
+    'get_tier' : IDL.Func([IDL.Text], [Result_4], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'list_tiers' : IDL.Func([], [Result_4], ['query']),
+    'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+    'list_tiers' : IDL.Func([], [Result_3], ['query']),
     'registerBotPublicKey' : IDL.Func([IDL.Vec(IDL.Nat8)], [], []),
     'revokeLicense' : IDL.Func([AccountId], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'setBotUrl' : IDL.Func([IDL.Text], [Result_3], []),
+    'setBotUrl' : IDL.Func([IDL.Text], [Result], []),
+    'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
     'storeJwt' : IDL.Func([IDL.Text, AccountId], [Result_2], []),
     'storeStrategicVault' : IDL.Func(
         [StrategicVault, AccountId],
@@ -449,21 +487,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'update_profile' : IDL.Func([UserProfile], [], []),
-    'update_tier' : IDL.Func(
-        [
-          IDL.Text,
-          IDL.Record({
-            'features' : IDL.Opt(IDL.Vec(IDL.Text)),
-            'active' : IDL.Opt(IDL.Bool),
-            'maxApiCalls' : IDL.Opt(IDL.Opt(IDL.Nat)),
-            'name' : IDL.Opt(IDL.Text),
-            'maxBots' : IDL.Opt(IDL.Opt(IDL.Nat)),
-            'priceInCents' : IDL.Opt(IDL.Nat),
-          }),
-        ],
-        [Result],
-        [],
-      ),
+    'update_tier' : IDL.Func([IDL.Text, SubscriptionTier], [Result], []),
   });
 };
 

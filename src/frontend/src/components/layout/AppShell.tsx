@@ -1,15 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGetCallerUserProfile } from '../../hooks/useCurrentUserProfile';
 import DashboardScreen from '../../screens/DashboardScreen';
 import SettingsScreen from '../../screens/SettingsScreen';
+import PaymentSuccessScreen from '../../screens/PaymentSuccessScreen';
+import PaymentFailureScreen from '../../screens/PaymentFailureScreen';
 import DashboardHeader from '../dashboard/DashboardHeader';
 import { Heart } from 'lucide-react';
 
-type Screen = 'dashboard' | 'settings';
+type Screen = 'dashboard' | 'settings' | 'payment-success' | 'payment-failure';
 
 export default function AppShell() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
   const { data: userProfile } = useGetCallerUserProfile();
+
+  // Check URL path on mount to handle payment redirects
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/payment-success') {
+      setCurrentScreen('payment-success');
+    } else if (path === '/payment-failure') {
+      setCurrentScreen('payment-failure');
+    }
+  }, []);
+
+  const handleNavigateHome = () => {
+    // Clear the URL path
+    window.history.pushState({}, '', '/');
+    setCurrentScreen('dashboard');
+  };
+
+  // Payment screens don't show header/footer
+  if (currentScreen === 'payment-success') {
+    return <PaymentSuccessScreen onNavigateHome={handleNavigateHome} />;
+  }
+
+  if (currentScreen === 'payment-failure') {
+    return <PaymentFailureScreen onNavigateHome={handleNavigateHome} />;
+  }
 
   return (
     <div className="flex h-screen flex-col bg-[#0A0A0A]">

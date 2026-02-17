@@ -1,13 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Add backend subscription tier storage and APIs (public read + admin-managed create/update/toggle) to support frontend tier listing and lookup.
+**Goal:** Fix `getHeartbeatData` cycles reporting so it compiles without using an unavailable cycles balance API.
 
 **Planned changes:**
-- Define a new public `SubscriptionTier` type in `backend/main.mo` with optional limits (`?Nat` where `null` means unlimited).
-- Persist tiers in stable storage keyed by `id`, with an in-memory lookup map for efficient access, while preserving all legacy public APIs/types.
-- Seed default tiers on initialization only when no tiers exist (`free`, `pro`, `whale`) with the specified limits and pricing.
-- Add public query APIs for the frontend: `list_tiers()` and `get_tier(id : Text)` returning the existing `Result` variant style (`#ok` / `#err`).
-- Add admin-only update APIs (AccessControl.isAdmin) as shared update calls: `create_tier`, `update_tier` (partial patch semantics), and `toggle_tier_active`, including duplicate-id rejection for `create_tier`.
+- Update `backend/main.mo` `getHeartbeatData` to try retrieving the canister cycles balance via `ExperimentalCycles.balance()`.
+- If `ExperimentalCycles.balance()` is not available in this Motoko version, set `cycles` to `0` and add the exact comment `// TODO: Replace with actual cycle balance API when available.` near the fallback.
+- Keep all other `getHeartbeatData` logic, return shape/fields, types, access control, and behavior unchanged.
 
-**User-visible outcome:** The frontend can fetch all subscription tiers and fetch a tier by id, and admins can create and manage tiers (update fields and enable/disable tiers) via backend APIs.
+**User-visible outcome:** No UI changes; the backend compiles in the target environment and `getHeartbeatData` continues to return the same data shape with `cycles` obtained via the allowed approach (or `0` with the specified TODO comment when unavailable).

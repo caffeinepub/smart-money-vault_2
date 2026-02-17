@@ -1,38 +1,28 @@
-// ======================================= PUBLIC ACTOR API & TYPES (BACKWARD COMPATIBILITY: LEGACY INVENTORY) ========================================= //
 import Map "mo:core/Map";
-import Text "mo:core/Text";
+import Array "mo:core/Array";
 import Iter "mo:core/Iter";
+import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Order "mo:core/Order";
-import Array "mo:core/Array";
 import Principal "mo:core/Principal";
-import Nat "mo:core/Nat";
-import Runtime "mo:core/Runtime";
 import Int "mo:core/Int";
-import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 import OutCall "http-outcalls/outcall";
-import Migration "migration";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import Stripe "stripe/stripe";
+import Nat "mo:core/Nat";
+import Float "mo:core/Float";
 
-(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // ========= LEGACY PUBLIC TYPES (MUST REMAIN BACKWARD COMPATIBLE THIS STEP) ========== //
-
-  // LEGACY PUBLIC TYPE: UserProfile
-  //   - Maintains full compatibility with previously stored profiles and legacy frontend calls
-  //   - Fields planTier, botPublicKey, and bot_id are intentionally OPTIONAL for compatibility
-  //   - Type definition and all callers MUST continue accepting/skipping these fields per legacy usage patterns
-  //
   public type UserProfile = {
     name : Text;
     accountId : ?Text;
     planTier : ?{ #Free; #Pro; #Whale };
     botPublicKey : ?Blob;
-    // IMPORTANT: bot_id remains optional for backward compatibility
     bot_id : ?Text;
     timezone : ?Text;
     notificationsEnabled : Bool;
@@ -133,8 +123,6 @@ actor {
 
   let usedNonces = Map.empty<Text, Time.Time>();
   let nonceWindowNs : Int = 300_000_000_000;
-
-  // ========== LEGACY PUBLIC METHODS (MUST REMAIN BACKWARD COMPATIBLE THIS STEP) ========== //
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -372,6 +360,7 @@ actor {
     botStatus : Status;
     lastHeartbeatAt : Time.Time;
     verifiedLicense : Bool;
+    cyclesWarning : ?Text;
   };
 
   public query ({ caller }) func getHeartbeatData(_accountId : AccountId) : async HeartbeatData {
@@ -379,11 +368,22 @@ actor {
       Runtime.trap("Unauthorized: Only authenticated users can view heartbeat data");
     };
 
+    let cycles = 0; // TODO: Replace with actual cycle balance API when available.
+    let lastHeartbeatAt = Time.now();
+    let botStatus = #ACTIVE;
+    let verifiedLicense = true;
+    var cyclesWarning : ?Text = null;
+
+    if (cycles < 500_000_000_000) {
+      cyclesWarning := ?("Low cycles: " # cycles.toText());
+    };
+
     {
-      cycles = 0;
-      botStatus = #ACTIVE;
-      lastHeartbeatAt = Time.now();
-      verifiedLicense = true;
+      cycles;
+      lastHeartbeatAt;
+      botStatus;
+      verifiedLicense;
+      cyclesWarning;
     };
   };
 
@@ -439,8 +439,6 @@ actor {
     };
     #ok(vaultData);
   };
-
-  // ================ New Bot Profile & Signal Handling ====================== //
 
   public type BotProfile = {
     publicKey : ?Blob;
@@ -588,7 +586,7 @@ actor {
     addAuditEntry(caller, "TOGGLE_UPLINK", "Uplink status changed to: " # statusText);
   };
 
-  public func check_uplink(bot_id : Text, signature : Blob) : async UplinkStatus {
+  public func check_uplink(bot_id : Text, _signature : Blob) : async UplinkStatus {
     var foundPrincipal : ?Principal = null;
     for ((principal, profile) in userProfiles.entries()) {
       switch (profile.bot_id) {
@@ -623,7 +621,7 @@ actor {
     };
   };
 
-  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
     OutCall.transform(input);
   };
 
@@ -698,93 +696,188 @@ actor {
     auditLog.add(principal, newEntries);
   };
 
-  // ================ New Tier Management Logic ==================== //
-
   public type SubscriptionTier = {
     id : Text;
     name : Text;
-    maxBots : ?Nat;
-    maxApiCalls : ?Nat;
+    maxBots : Nat;
+    maxApiCalls : Nat;
     priceInCents : Nat;
     features : [Text];
     active : Bool;
   };
 
-  let tiersMap = Map.empty<Text, SubscriptionTier>();
+  let subscriptionTiers = Map.empty<Text, SubscriptionTier>();
 
-  // Returns all subscription tiers as a Result (publicly accessible, not admin-only)
-  public query ({ caller }) func list_tiers() : async Result<[SubscriptionTier]> {
-    #ok(tiersMap.values().toArray());
+  func initializeDefaultTiers() {
+    if (subscriptionTiers.isEmpty()) {
+      let defaultTiers : [(Text, SubscriptionTier)] = [
+        (
+          "free",
+          {
+            id = "free";
+            name = "Paper Hand";
+            maxBots = 1;
+            maxApiCalls = 1000;
+            priceInCents = 0;
+            features = [
+              "Read-only dashboard",
+              "Delayed market data",
+              "Basic analytics",
+              "Community support",
+            ];
+            active = true;
+          },
+        ),
+        (
+          "pro",
+          {
+            id = "pro";
+            name = "Diamond Hand";
+            maxBots = 5;
+            maxApiCalls = 50000;
+            priceInCents = 5000;
+            features = [
+              "Real-time trading",
+              "Live market data",
+              "Advanced analytics",
+              "Priority support",
+            ];
+            active = true;
+          },
+        ),
+        (
+          "whale",
+          {
+            id = "whale";
+            name = "Whale";
+            maxBots = 999999;
+            maxApiCalls = 999999;
+            priceInCents = 50000;
+            features = [
+              "Priority execution",
+              "Dedicated support",
+              "Custom strategies",
+              "API access",
+            ];
+            active = true;
+          },
+        ),
+      ];
+
+      for ((id, tier) in defaultTiers.values()) {
+        subscriptionTiers.add(id, tier);
+      };
+    };
   };
 
-  public query ({ caller }) func get_tier(id : Text) : async Result<SubscriptionTier> {
-    switch (tiersMap.get(id)) {
+  initializeDefaultTiers();
+
+  public query func list_tiers() : async Result<[SubscriptionTier]> {
+    #ok(subscriptionTiers.values().toArray());
+  };
+
+  public query func get_tier(id : Text) : async Result<SubscriptionTier> {
+    if (id.size() == 0) {
+      return #err(#InvalidInput);
+    };
+
+    switch (subscriptionTiers.get(id)) {
       case (?tier) { #ok(tier) };
       case (null) { #err(#InvalidInput) };
     };
   };
 
-  // Creates a new subscription tier (admin-only)
-  public shared ({ caller }) func create_tier(tier : SubscriptionTier) : async Result<()> {
+  public shared ({ caller }) func create_tier(
+    tier : SubscriptionTier
+  ) : async Result<SubscriptionTier> {
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can create tiers");
+      return #err(#Unauthorized);
     };
-    if (tiersMap.containsKey(tier.id)) {
+    if (tier.id.size() == 0) {
       return #err(#InvalidInput);
     };
-    tiersMap.add(tier.id, tier);
-    #ok(());
+    subscriptionTiers.add(tier.id, tier);
+    #ok(tier);
   };
 
-  // Updates an existing subscription tier (admin-only)
-  public shared ({ caller }) func update_tier(id : Text, patch : {
-    name : ?Text;
-    maxBots : ??Nat;
-    maxApiCalls : ??Nat;
-    priceInCents : ?Nat;
-    features : ?[Text];
-    active : ?Bool;
-  }) : async Result<()> {
+  public shared ({ caller }) func update_tier(
+    id : Text,
+    updated : SubscriptionTier
+  ) : async Result<Text> {
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can update tiers");
+      return #err(#Unauthorized);
     };
-    switch (tiersMap.get(id)) {
-      case (null) { #err(#InvalidInput) };
-      case (?existing) {
-        let updated = {
-          id = existing.id;
-          name = patch.name.get(existing.name);
-          maxBots = patch.maxBots.get(existing.maxBots);
-          maxApiCalls = patch.maxApiCalls.get(existing.maxApiCalls);
-          priceInCents = patch.priceInCents.get(existing.priceInCents);
-          features = patch.features.get(existing.features);
-          active = patch.active.get(existing.active);
-        };
-        tiersMap.add(id, updated);
-        #ok(());
+    if (id.size() == 0) {
+      return #err(#InvalidInput);
+    };
+    switch (subscriptionTiers.get(id)) {
+      case (?_) {
+        subscriptionTiers.add(id, updated);
+        #ok("Updated successfully");
       };
+      case (null) { #err(#InvalidInput) };
     };
   };
 
-  public shared ({ caller }) func toggle_tier_active(id : Text, active : Bool) : async Result<()> {
+  public shared ({ caller }) func toggle_tier_active(
+    id : Text,
+    active : Bool
+  ) : async Result<Text> {
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can toggle tier status");
+      return #err(#Unauthorized);
     };
-    switch (tiersMap.get(id)) {
-      case (null) { #err(#InvalidInput) };
-      case (?existing) {
+    if (id.size() == 0) {
+      return #err(#InvalidInput);
+    };
+    switch (subscriptionTiers.get(id)) {
+      case (?tier) {
         let updated = {
-          id = existing.id;
-          name = existing.name;
-          maxBots = existing.maxBots;
-          maxApiCalls = existing.maxApiCalls;
-          priceInCents = existing.priceInCents;
-          features = existing.features;
-          active;
+          tier with active;
         };
-        tiersMap.add(id, updated);
-        #ok(());
+        subscriptionTiers.add(id, updated);
+        #ok("Tier status updated");
       };
+      case (null) { #err(#InvalidInput) };
     };
+  };
+
+  //-------------------- Stripe integration ----------------------
+
+  public type ShoppingItem = Stripe.ShoppingItem;
+  public type StripeSessionStatus = Stripe.StripeSessionStatus;
+  public type StripeConfiguration = Stripe.StripeConfiguration;
+
+  var stripeConfig : ?StripeConfiguration = null;
+
+  public query func isStripeConfigured() : async Bool {
+    stripeConfig != null;
+  };
+
+  public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can perform this action");
+    };
+    stripeConfig := ?config;
+  };
+
+  func getStripeConfiguration() : Stripe.StripeConfiguration {
+    switch (stripeConfig) {
+      case (null) { Runtime.trap("Stripe needs to be first configured") };
+      case (?value) { value };
+    };
+  };
+
+  public shared ({ caller }) func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can check session status");
+    };
+    await Stripe.getSessionStatus(getStripeConfiguration(), sessionId, transform);
+  };
+
+  public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can create checkout sessions");
+    };
+    await Stripe.createCheckoutSession(getStripeConfiguration(), caller, items, successUrl, cancelUrl, transform);
   };
 };

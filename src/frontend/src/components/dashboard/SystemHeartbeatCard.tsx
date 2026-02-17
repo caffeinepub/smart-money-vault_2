@@ -1,6 +1,6 @@
 import { useGetHeartbeatData } from '../../hooks/useHeartbeat';
 import { useGetCallerUserProfile } from '../../hooks/useCurrentUserProfile';
-import { Activity, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Activity, CheckCircle2, XCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { Status } from '../../backend';
 import { cn } from '../../lib/utils';
 
@@ -28,6 +28,16 @@ export default function SystemHeartbeatCard() {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Cycles Warning Banner */}
+          {heartbeat?.cyclesWarning && (
+            <div className="flex items-start space-x-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500" />
+              <p className="text-xs leading-relaxed text-amber-200">
+                {heartbeat.cyclesWarning}
+              </p>
+            </div>
+          )}
+
           {/* Bot Status with Pulsing Indicator */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-white/50">Bot Status</span>

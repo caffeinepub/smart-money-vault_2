@@ -1,6 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Frontend plan: no changes required for backend-only subscription tier APIs",
+  "title": "Fix heartbeat cycles balance API usage (frontend-only plan)",
   "requirements": []
 }

@@ -1,32 +1,40 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 3,
-  "summary": "Smart Money Vault: institutional trading command center on ICP with a single Motoko canister (backend/main.mo) and React frontend; adding backend subscription tier management to support frontend tier APIs and admin CRUD.",
+  "projectStateVersion": 7,
+  "summary": "Add a backend fix in backend/main.mo: update legacy getHeartbeatData to return real data from botProfiles/userProfiles/licenses and real canister cycle balance, and extend HeartbeatData with optional cyclesWarning while preserving legacy public methods and architecture constraints.",
   "architectural_notes": [
-    "Project name: Smart Money Vault (institutional trading command center on ICP).",
-    "Architecture: single Motoko canister (backend/main.mo) + React frontend; off-chain Python trading bot signs requests with Ed25519.",
-    "Rules: preserve all legacy public methods listed in file header comment; all mutations must be update calls, never query calls; keep files <1000 lines and split into modules if needed; do not modify stable/tested modules unless explicitly told.",
-    "Do not modify paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui/*.",
-    "Access control: use AccessControl.hasPermission for user checks and AccessControl.isAdmin for admin checks.",
-    "Subscription tiers: represent unlimited maxBots/maxApiCalls as null (?Nat), not sentinel values.",
-    "Tier API access: list_tiers and get_tier are public query; create/update/toggle are admin-only update methods.",
-    "update_tier semantics: partial update with optional fields; null means keep existing value.",
-    "create_tier semantics: reject duplicate tier IDs with #err; use update_tier for changes.",
-    "list_tiers returns Result<[SubscriptionTier]> and get_tier returns Result<SubscriptionTier> with frontend expecting __kind__ === 'ok'."
+    "Stripe integration must not modify backend/stripe/stripe.mo; actor should store optional stable StripeConfiguration and call Stripe.createCheckoutSession/getSessionStatus using existing transform function.",
+    "Expose Stripe-related types (ShoppingItem, StripeSessionStatus) as public types from the actor for frontend consumption.",
+    "Project context: \"Smart Money Vault\" (institutional trading command center on ICP) with single Motoko canister backend/main.mo + React frontend + off-chain Python trading bot.",
+    "Constraints: preserve ALL legacy public methods listed in backend/main.mo header; all mutations must be update calls (never query); keep files <1000 lines (split into modules if needed); do not modify stable/tested modules unless explicitly told; do not modify frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui/*.",
+    "Access control rules: use AccessControl.hasPermission for user checks and AccessControl.isAdmin for admin checks.",
+    "Cycle balance API constraint: Runtime.cyclesBalance() is not available in the current Motoko version; use ExperimentalCycles.balance() if available, otherwise set cycles to 0 and add comment `// TODO: Replace with actual cycle balance API when available.`"
   ],
-  "known_issues": [],
-  "isFixRequest": false,
-  "existing_features": [],
+  "known_issues": [
+    "Repeated build attempts for the getHeartbeatData change failed with the assistant reporting it 'couldn't implement that request'; root cause not identified in conversation.",
+    "Motoko version lacks Runtime.cyclesBalance(); heartbeat cycles must use ExperimentalCycles.balance() or fall back to 0 with a TODO comment."
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-update-the-dashboard-heartbeat-ui-to-tolerate-and-display-the-new-optional-cycleswarning-field-returned-by-the-backend-heartbeat-api",
+      "title": "Update the dashboard heartbeat UI to tolerate and display the new optional `cyclesWarning` field returned by the backend heartbeat API.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    }
+  ],
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement subscription tier management in Motoko canister: define SubscriptionTier type, stable map keyed by id, seed default tiers (free/pro/whale), public query list_tiers/get_tier returning Result (ok/err pattern), and admin-only create_tier/update_tier (partial update with optional fields where null keeps existing) plus toggle_tier_active; create_tier rejects duplicate ids.",
+      "summary": "Wire existing backend/stripe/stripe.mo module into actor public interface: add stable stripeConfig, admin setStripeConfig, query isStripeConfigured, user-auth createCheckoutSession/update and getStripeSessionStatus/query; re-export ShoppingItem and StripeSessionStatus types; do not modify stripe.mo or existing endpoints/types.",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "In backend/main.mo, add a new public type `SubscriptionTier` with fields: `id: Text`, `name: Text`, `maxBots: ?Nat` (null means unlimited), `maxApiCalls: ?Nat` (null means unlimited), `priceInCents: Nat`, `features: [Text]`, `active: Bool`.",
+      "summary": "Wire the existing Stripe module into the backend actor public interface without modifying the Stripe module file. Import the Stripe module from `backend/stripe/stripe.mo` and use its existing `createCheckoutSession` and `getSessionStatus` functions from the actor.",
       "reqIds": [
         "REQ-1"
       ],
@@ -34,7 +42,7 @@
     },
     {
       "id": "AR-3",
-      "summary": "Persist subscription tiers in stable storage keyed by `id`, and maintain an in-memory lookup map keyed by `id` for efficient reads/writes. Do not remove or change any legacy public types/methods listed in the file header compatibility inventory.",
+      "summary": "Add stable Stripe configuration storage and admin/user-gated Stripe endpoints to `backend/main.mo`:\n- Add stable variable `stripeConfig : ?StripeConfiguration` (type imported from the Stripe module).\n- Add `isStripeConfigured` (query): returns `Bool` indicating whether `stripeConfig` is non-null.\n- Add `setStripeConfig` (update, admin only): input `secretKey : Text`, `allowedCountries : [Text]`; store as `StripeConfiguration`; return `#ok(\"Configured\")`.\n- Add `createCheckoutSession` (update, authenticated user required): input `items : [ShoppingItem]`, `successUrl : Text`, `cancelUrl : Text`; if `stripeConfig` is null return `#err` with message `\"Stripe not configured\"`; otherwise call `Stripe.createCheckoutSession` with (config, caller, items, URLs, and the existing actor `transform` function) and return the resulting `Text` (JSON string).\n- Add `getStripeSessionStatus` (query, authenticated user required): input `sessionId : Text`; if `stripeConfig` is null return an error; otherwise call `Stripe.getSessionStatus` with (config, sessionId, and the existing actor `transform` function) and return the `StripeSessionStatus` result.",
       "reqIds": [
         "REQ-2"
       ],
@@ -42,7 +50,7 @@
     },
     {
       "id": "AR-4",
-      "summary": "Seed default tiers during initialization if the stable tier store is empty: `free` (name \"Paper Hand\", maxBots= ?1, maxApiCalls=?1000, priceInCents=0, active=true), `pro` (name \"Diamond Hand\", maxBots=?5, maxApiCalls=?50000, priceInCents=5000, active=true), `whale` (name \"Whale\", maxBots=null, maxApiCalls=null, priceInCents=50000, active=true).",
+      "summary": "Import `ShoppingItem` and `StripeSessionStatus` types from `backend/stripe/stripe.mo` and re-export them as public actor types so the frontend can use them. Ensure any necessary upgrade/migration logic preserves existing stable state and initializes the newly added `stripeConfig` stable field safely during upgrades.",
       "reqIds": [
         "REQ-3"
       ],
@@ -50,23 +58,53 @@
     },
     {
       "id": "AR-5",
-      "summary": "Implement public query methods expected by the frontend: `list_tiers()` returning `Result<[SubscriptionTier]>` and `get_tier(id : Text)` returning `Result<SubscriptionTier>`. These methods must be publicly accessible (not admin-only) and must return variants matching the existing `Result` type pattern (`#ok` / `#err`) so the frontend can rely on `__kind__ === 'ok'` / `__kind__ === 'err'` decoding.",
+      "summary": "Fix legacy getHeartbeatData in backend/main.mo: replace hardcoded values by looking up caller BotProfile (botProfiles) and UserProfile (license info), compute cycles using Runtime.cyclesBalance() or ExperimentalCycles.balance() (else 0 with TODO), set botStatus (#ACTIVE if botProfile exists and uplinkStatus true else #SUSPENDED), set lastHeartbeatAt (botProfile.lastHeartbeat else 0), set verifiedLicense by checking active license in licenses map via user accountId, and add backward-compatible optional field cyclesWarning:?Text when cycles < 500_000_000_000; do not modify other endpoints.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Fix the legacy `getHeartbeatData` implementation in `backend/main.mo` to return real data instead of hardcoded placeholders, while keeping the same public method name and overall single-actor architecture intact.",
       "reqIds": [
         "REQ-4"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-6",
-      "summary": "Add admin-only tier management update calls using AccessControl.isAdmin for authorization checks: `create_tier(tier : SubscriptionTier)`, `update_tier(id : Text, patch : { name : ?Text; maxBots : ??Nat; maxApiCalls : ??Nat; priceInCents : ?Nat; features : ?[Text]; active : ?Bool })` (partial update semantics), and `toggle_tier_active(id : Text, active : Bool)`. All mutations must be `shared` update calls (not query). `create_tier` must reject duplicate `id` with `#err(...)` and must not overwrite existing tiers.",
+      "id": "AR-7",
+      "summary": "Extend the backend `HeartbeatData` type to include a backward-compatible optional `cyclesWarning : ?Text` field and populate it when the canister cycle balance is below 500_000_000_000.",
       "reqIds": [
         "REQ-5"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Wire the existing Stripe module (`backend/stripe/stripe.mo`) into the main actor public interface in `backend/main.mo` without modifying `backend/stripe/stripe.mo`, including stable storage for Stripe configuration and the required admin/user-gated endpoints.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Ensure upgrades preserve existing canister state while safely introducing the new stable `stripeConfig` field (adding conditional migration logic only if required by the current project’s upgrade policy).",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Update `backend/main.mo` `getHeartbeatData` so the `cycles` value no longer uses any unavailable cycles balance API: attempt to use `ExperimentalCycles.balance()` for the canister cycle balance; if `ExperimentalCycles.balance()` is not available in this Motoko version, set `cycles` to `0` and add the exact comment `// TODO: Replace with actual cycle balance API when available.`. Do not change any other logic, types, fields, access control, or behavior in `getHeartbeatData` beyond this `cycles` retrieval adjustment.",
+      "reqIds": [
+        "REQ-9"
       ],
       "status": "pending"
     }
   ],
   "gameProjectType": "none",
-  "projectName": "Smart Money Vault",
+  "projectName": "Expose Stripe checkout/session APIs via backend actor (stable config, admin setup, user-auth calls)",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

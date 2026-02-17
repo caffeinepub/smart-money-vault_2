@@ -38,6 +38,7 @@ export interface HeartbeatData {
   'cycles' : bigint,
   'botStatus' : Status,
   'lastHeartbeatAt' : Time,
+  'cyclesWarning' : [] | [string],
   'verifiedLicense' : boolean,
 }
 export interface JwtToken { 'jwt' : string, 'accountId' : AccountId }
@@ -47,18 +48,23 @@ export interface License {
   'updatedAt' : [] | [Time],
   'revokedAt' : [] | [Time],
 }
-export type Result = { 'ok' : null } |
+export type Result = { 'ok' : string } |
   { 'err' : Error };
 export type Result_1 = { 'ok' : StrategicVault } |
   { 'err' : Error };
 export type Result_2 = { 'ok' : JwtToken } |
   { 'err' : Error };
-export type Result_3 = { 'ok' : string } |
+export type Result_3 = { 'ok' : Array<SubscriptionTier> } |
   { 'err' : Error };
-export type Result_4 = { 'ok' : Array<SubscriptionTier> } |
+export type Result_4 = { 'ok' : SubscriptionTier } |
   { 'err' : Error };
-export type Result_5 = { 'ok' : SubscriptionTier } |
-  { 'err' : Error };
+export interface ShoppingItem {
+  'productName' : string,
+  'currency' : string,
+  'quantity' : bigint,
+  'priceInCents' : bigint,
+  'productDescription' : string,
+}
 export interface Signal {
   'direction' : { 'buy' : null } |
     { 'sell' : null },
@@ -94,13 +100,21 @@ export interface StrategyPath {
   'items' : Array<Strategy>,
   'pathSymbols' : Array<Symbol>,
 }
+export interface StripeConfiguration {
+  'allowedCountries' : Array<string>,
+  'secretKey' : string,
+}
+export type StripeSessionStatus = {
+    'completed' : { 'userPrincipal' : [] | [string], 'response' : string }
+  } |
+  { 'failed' : { 'error' : string } };
 export interface SubscriptionTier {
   'id' : string,
   'features' : Array<string>,
   'active' : boolean,
-  'maxApiCalls' : [] | [bigint],
+  'maxApiCalls' : bigint,
   'name' : string,
-  'maxBots' : [] | [bigint],
+  'maxBots' : bigint,
   'priceInCents' : bigint,
 }
 export interface Symbol {
@@ -156,8 +170,12 @@ export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'check_uplink' : ActorMethod<[string, Uint8Array], UplinkStatus>,
+  'createCheckoutSession' : ActorMethod<
+    [Array<ShoppingItem>, string, string],
+    string
+  >,
   'createOrUpdateLicense' : ActorMethod<[AccountId, boolean], undefined>,
-  'create_tier' : ActorMethod<[SubscriptionTier], Result>,
+  'create_tier' : ActorMethod<[SubscriptionTier], Result_4>,
   'fetchSignals' : ActorMethod<[], SignalFetchResult>,
   'getAllLicenses' : ActorMethod<[], Array<[AccountId, License]>>,
   'getAuditLog' : ActorMethod<[bigint], Array<AuditEntry>>,
@@ -170,18 +188,21 @@ export interface _SERVICE {
     boolean
   >,
   'getMyLicenseStatus' : ActorMethod<[], [] | [License]>,
+  'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'getTradesPaginated' : ActorMethod<
     [[] | [AccountId], [] | [Time], [] | [Time], bigint, bigint],
     Array<Trade>
   >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'get_tier' : ActorMethod<[string], Result_5>,
+  'get_tier' : ActorMethod<[string], Result_4>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'list_tiers' : ActorMethod<[], Result_4>,
+  'isStripeConfigured' : ActorMethod<[], boolean>,
+  'list_tiers' : ActorMethod<[], Result_3>,
   'registerBotPublicKey' : ActorMethod<[Uint8Array], undefined>,
   'revokeLicense' : ActorMethod<[AccountId], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'setBotUrl' : ActorMethod<[string], Result_3>,
+  'setBotUrl' : ActorMethod<[string], Result>,
+  'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
   'storeJwt' : ActorMethod<[string, AccountId], Result_2>,
   'storeStrategicVault' : ActorMethod<[StrategicVault, AccountId], Result_1>,
   'submitTrade' : ActorMethod<[Trade, Uint8Array, string, Time], undefined>,
@@ -189,20 +210,7 @@ export interface _SERVICE {
   'toggle_uplink' : ActorMethod<[boolean], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'update_profile' : ActorMethod<[UserProfile], undefined>,
-  'update_tier' : ActorMethod<
-    [
-      string,
-      {
-        'features' : [] | [Array<string>],
-        'active' : [] | [boolean],
-        'maxApiCalls' : [] | [[] | [bigint]],
-        'name' : [] | [string],
-        'maxBots' : [] | [[] | [bigint]],
-        'priceInCents' : [] | [bigint],
-      },
-    ],
-    Result
-  >,
+  'update_tier' : ActorMethod<[string, SubscriptionTier], Result>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

@@ -40,13 +40,6 @@ export interface AuditEntry {
     timestamp: Time;
     details: string;
 }
-export type Result_5 = {
-    __kind__: "ok";
-    ok: SubscriptionTier;
-} | {
-    __kind__: "err";
-    err: Error_;
-};
 export type Result_1 = {
     __kind__: "ok";
     ok: StrategicVault;
@@ -58,6 +51,7 @@ export interface HeartbeatData {
     cycles: bigint;
     botStatus: Status;
     lastHeartbeatAt: Time;
+    cyclesWarning?: string;
     verifiedLicense: boolean;
 }
 export interface StrategicVault {
@@ -66,7 +60,7 @@ export interface StrategicVault {
 }
 export type Result_4 = {
     __kind__: "ok";
-    ok: Array<SubscriptionTier>;
+    ok: SubscriptionTier;
 } | {
     __kind__: "err";
     err: Error_;
@@ -93,6 +87,22 @@ export interface StrategyPath {
     deployedAt: Time;
     items: Array<Strategy>;
     pathSymbols: Array<Symbol>;
+}
+export type StripeSessionStatus = {
+    __kind__: "completed";
+    completed: {
+        userPrincipal?: string;
+        response: string;
+    };
+} | {
+    __kind__: "failed";
+    failed: {
+        error: string;
+    };
+};
+export interface StripeConfiguration {
+    allowedCountries: Array<string>;
+    secretKey: string;
 }
 export interface Strategy {
     entryTime: Time;
@@ -138,19 +148,26 @@ export interface SubscriptionTier {
     id: string;
     features: Array<string>;
     active: boolean;
-    maxApiCalls?: bigint;
+    maxApiCalls: bigint;
     name: string;
-    maxBots?: bigint;
+    maxBots: bigint;
     priceInCents: bigint;
 }
-export type Result = {
+export interface ShoppingItem {
+    productName: string;
+    currency: string;
+    quantity: bigint;
+    priceInCents: bigint;
+    productDescription: string;
+}
+export type Result_3 = {
     __kind__: "ok";
-    ok: null;
+    ok: Array<SubscriptionTier>;
 } | {
     __kind__: "err";
     err: Error_;
 };
-export type Result_3 = {
+export type Result = {
     __kind__: "ok";
     ok: string;
 } | {
@@ -211,9 +228,10 @@ export enum Variant_buy_sell {
 }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    check_uplink(bot_id: string, signature: Uint8Array): Promise<UplinkStatus>;
+    check_uplink(bot_id: string, _signature: Uint8Array): Promise<UplinkStatus>;
+    createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     createOrUpdateLicense(accountId: AccountId, active: boolean): Promise<void>;
-    create_tier(tier: SubscriptionTier): Promise<Result>;
+    create_tier(tier: SubscriptionTier): Promise<Result_4>;
     fetchSignals(): Promise<SignalFetchResult>;
     getAllLicenses(): Promise<Array<[AccountId, License]>>;
     getAuditLog(limit: bigint): Promise<Array<AuditEntry>>;
@@ -223,15 +241,18 @@ export interface backendInterface {
     getHeartbeatData(_accountId: AccountId): Promise<HeartbeatData>;
     getLicenseStatus(accountId: AccountId, signature: Uint8Array, nonce: string, timestamp: Time): Promise<boolean>;
     getMyLicenseStatus(): Promise<License | null>;
+    getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
     getTradesPaginated(accountId: AccountId | null, startTime: Time | null, endTime: Time | null, start: bigint, limit: bigint): Promise<Array<Trade>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    get_tier(id: string): Promise<Result_5>;
+    get_tier(id: string): Promise<Result_4>;
     isCallerAdmin(): Promise<boolean>;
-    list_tiers(): Promise<Result_4>;
+    isStripeConfigured(): Promise<boolean>;
+    list_tiers(): Promise<Result_3>;
     registerBotPublicKey(publicKey: Uint8Array): Promise<void>;
     revokeLicense(accountId: AccountId): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    setBotUrl(url: string): Promise<Result_3>;
+    setBotUrl(url: string): Promise<Result>;
+    setStripeConfiguration(config: StripeConfiguration): Promise<void>;
     storeJwt(jwt: string, accountId: AccountId): Promise<Result_2>;
     storeStrategicVault(vaultData: StrategicVault, _accountId: AccountId): Promise<Result_1>;
     submitTrade(trade: Trade, signature: Uint8Array, nonce: string, timestamp: Time): Promise<void>;
@@ -239,12 +260,5 @@ export interface backendInterface {
     toggle_uplink(state: boolean): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
     update_profile(profile: UserProfile): Promise<void>;
-    update_tier(id: string, patch: {
-        features?: Array<string>;
-        active?: boolean;
-        maxApiCalls?: bigint | null;
-        name?: string;
-        maxBots?: bigint | null;
-        priceInCents?: bigint;
-    }): Promise<Result>;
+    update_tier(id: string, updated: SubscriptionTier): Promise<Result>;
 }

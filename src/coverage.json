@@ -1,46 +1,18 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-12T06:30:28.146Z",
+  "generatedAt": "2026-02-17T00:11:41.091Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
+    "total": 1,
     "implemented": 0,
     "items": [
       {
-        "id": "REQ-1",
-        "summary": "In backend/main.mo, add a new public type `SubscriptionTier` with fields: `id: Text`, `name: Text`, `maxBots: ?Nat` (null means unlimited), `maxApiCalls: ?Nat` (null means unlimited), `priceInCents: Nat`, `features: [Text]`, `active: Bool`.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Persist subscription tiers in stable storage keyed by `id`, and maintain an in-memory lookup map keyed by `id` for efficient reads/writes. Do not remove or change any legacy public types/methods listed in the file header compatibility inventory.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Seed default tiers during initialization if the stable tier store is empty: `free` (name \"Paper Hand\", maxBots= ?1, maxApiCalls=?1000, priceInCents=0, active=true), `pro` (name \"Diamond Hand\", maxBots=?5, maxApiCalls=?50000, priceInCents=5000, active=true), `whale` (name \"Whale\", maxBots=null, maxApiCalls=null, priceInCents=50000, active=true).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Implement public query methods expected by the frontend: `list_tiers()` returning `Result<[SubscriptionTier]>` and `get_tier(id : Text)` returning `Result<SubscriptionTier>`. These methods must be publicly accessible (not admin-only) and must return variants matching the existing `Result` type pattern (`#ok` / `#err`) so the frontend can rely on `__kind__ === 'ok'` / `__kind__ === 'err'` decoding.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Add admin-only tier management update calls using AccessControl.isAdmin for authorization checks: `create_tier(tier : SubscriptionTier)`, `update_tier(id : Text, patch : { name : ?Text; maxBots : ??Nat; maxApiCalls : ??Nat; priceInCents : ?Nat; features : ?[Text]; active : ?Bool })` (partial update semantics), and `toggle_tier_active(id : Text, active : Bool)`. All mutations must be `shared` update calls (not query). `create_tier` must reject duplicate `id` with `#err(...)` and must not overwrite existing tiers.",
+        "id": "REQ-9",
+        "summary": "Update `backend/main.mo` `getHeartbeatData` so the `cycles` value no longer uses any unavailable cycles balance API: attempt to use `ExperimentalCycles.balance()` for the canister cycle balance; if `ExperimentalCycles.balance()` is not available in this Motoko version, set `cycles` to `0` and add the exact comment `// TODO: Replace with actual cycle balance API when available.`. Do not change any other logic, types, fields, access control, or behavior in `getHeartbeatData` beyond this `cycles` retrieval adjustment.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
@@ -49,17 +21,13 @@
   },
   "changedFiles": [
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
-    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
-    "frontend/src/components/settings/SubscriptionPanel.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useTiers.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
