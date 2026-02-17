@@ -11,27 +11,43 @@ export default function SettingsScreen() {
   const { data: isAdmin } = useIsCallerAdmin();
 
   return (
-    <div className="p-6">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="mb-6 text-3xl font-medium tracking-tight text-white">Settings</h1>
+    <div className="min-h-screen p-4 sm:p-6">
+      <div className="mx-auto max-w-5xl">
+        <h1 className="mb-6 text-2xl font-medium tracking-tight text-white sm:text-3xl">
+          Settings
+        </h1>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-6 bg-[#121212] border border-white/5">
-            <TabsTrigger value="profile" className="data-[state=active]:bg-white/10">
-              Profile
-            </TabsTrigger>
-            <TabsTrigger value="connect" className="data-[state=active]:bg-white/10">
-              Connect Bot
-            </TabsTrigger>
-            <TabsTrigger value="subscription" className="data-[state=active]:bg-white/10">
-              Subscription
-            </TabsTrigger>
-            {isAdmin && (
-              <TabsTrigger value="admin-tiers" className="data-[state=active]:bg-white/10">
-                Admin Tiers
+          <div className="mb-6 overflow-x-auto">
+            <TabsList className="inline-flex w-full min-w-max bg-[#121212] border border-white/5 sm:w-auto">
+              <TabsTrigger
+                value="profile"
+                className="data-[state=active]:bg-white/10 whitespace-nowrap"
+              >
+                Profile
               </TabsTrigger>
-            )}
-          </TabsList>
+              <TabsTrigger
+                value="connect"
+                className="data-[state=active]:bg-white/10 whitespace-nowrap"
+              >
+                Connect Bot
+              </TabsTrigger>
+              <TabsTrigger
+                value="subscription"
+                className="data-[state=active]:bg-white/10 whitespace-nowrap"
+              >
+                Subscription
+              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger
+                  value="admin-tiers"
+                  className="data-[state=active]:bg-white/10 whitespace-nowrap"
+                >
+                  Admin Tiers
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
 
           <TabsContent value="profile">
             <ProfileSettingsForm />

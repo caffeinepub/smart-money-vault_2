@@ -1,39 +1,54 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T01:56:44.798Z",
-  "summary": "REQ-33 is partially addressed by introducing a denylist and a feature-filtering helper in SubscriptionPanel, but the diff excerpt does not show that the filter is actually applied to the rendered tier features list. The changes also appear to introduce unrelated behavior changes (notably a simplified admin check) and modify non-requested project metadata/summary files.",
+  "generatedAt": "2026-02-17T02:21:22.579Z",
+  "summary": "REQ-41 is not implemented as specified. The diff keeps/introduces Web Crypto Ed25519 generation as the primary path and does not use `@noble/ed25519` for keypair derivation. A fallback exists with the required TODO comment, but the normal-path requirements (noble generation and derived public key) are missing.",
   "missing_requirements": [
     {
-      "id": "REQ-33",
-      "requirement": "Remove the support-related phrases \"Community support\", \"Priority Support\", and \"Dedicated Support\" so they no longer appear anywhere in the Subscription tab UI (including the tier features list rendering).",
-      "reason": "Although a denylist and filter function are added, the provided diff snippet is truncated before any evidence that the Subscription UI actually uses `filterSupportFeatures(...)` when rendering tier feature lists. Without evidence of integration, it's not confirmed that the strings no longer appear in the UI.",
+      "id": "REQ-41",
+      "requirement": "In `frontend/src/components/settings/ConnectBotWizardModal.tsx`, `handleGenerateKeypair` must generate the Ed25519 keypair using `@noble/ed25519` exactly: `import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);` (no Web Crypto Ed25519 on the normal path).",
+      "reason": "The implementation uses `window.crypto.subtle.generateKey({ name: 'Ed25519' })` as the primary generation method and contains no `@noble/ed25519` import or usage of `ed.utils.randomPrivateKey()` / `ed.getPublicKeyAsync()`.",
       "evidence": [
-        "frontend/src/components/settings/SubscriptionPanel.tsx (truncated) — defines SUPPORT_FEATURES_DENYLIST and filterSupportFeatures but no shown usage in rendering"
+        "frontend/src/components/settings/ConnectBotWizardModal.tsx (generateEd25519Keypair uses `window.crypto.subtle.generateKey` and exports keys; no noble import present)"
+      ]
+    },
+    {
+      "id": "REQ-41",
+      "requirement": "On the normal path, the public key must be derived from the generated private key (not independently random bytes) via noble.",
+      "reason": "The normal path derives the public key by exporting from a Web Crypto keypair, not by deriving from `privateKey` using noble. Additionally, the fallback explicitly generates the public key as independent random bytes (placeholder).",
+      "evidence": [
+        "frontend/src/components/settings/ConnectBotWizardModal.tsx (`exportKey('raw', cryptoKeyPair.publicKey)` on normal path; fallback uses `window.crypto.getRandomValues(publicKey)` with comment 'not cryptographically derived')"
+      ]
+    },
+    {
+      "id": "REQ-41",
+      "requirement": "If `@noble/ed25519` is not available at runtime/build-time, fall back to generating a 32-byte random seed and produce a placeholder derived public key (while keeping the normal path as noble).",
+      "reason": "The fallback is triggered by Web Crypto unavailability, not noble unavailability; noble is not attempted at all.",
+      "evidence": [
+        "frontend/src/components/settings/ConnectBotWizardModal.tsx (try/catch around Web Crypto; warning message: 'Web Crypto Ed25519 not available, using fallback')"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Changed/introduced admin-gating logic in the Subscription panel via a simplified `isAdmin = identity !== null` check (with comment indicating it is simplified).",
-      "reason": "BuildRequest explicitly lists as a non-goal: \"Do not modify routing, admin gating, or other Settings tabs beyond the Subscription UI text removal.\" The diff shows a potentially behavior-changing admin determination in SubscriptionPanel.",
+      "description": "Primary Ed25519 keypair generation using Web Crypto (`window.crypto.subtle.generateKey`) with JWK private key export/parsing to extract the seed.",
+      "reason": "REQ-41 explicitly requires replacing Web Crypto Ed25519 generation with `@noble/ed25519` on the normal path.",
       "evidence": [
-        "frontend/src/components/settings/SubscriptionPanel.tsx (truncated) — `const isAdmin = identity !== null; // Simplified; in production, check actual admin role`"
+        "frontend/src/components/settings/ConnectBotWizardModal.tsx (`window.crypto.subtle.generateKey({ name: 'Ed25519' })`, `exportKey('jwk', ...)` and base64url parsing)"
       ]
     },
     {
-      "description": "Updated project metadata/summary files unrelated to removing support-related phrases from the Subscription tab UI.",
-      "reason": "The BuildRequest only asks to remove specific phrases from Subscription tab UI. Modifying high-level state/summary artifacts is not requested and may indicate scope creep.",
+      "description": "Console warning/error logging during key generation (e.g., `console.warn(...)` on fallback and `console.error(...)` on failure).",
+      "reason": "REQ-41/constraints focus on changing only the key generation implementation and explicitly call out avoiding new console errors; new logging behavior is not requested in the spec text provided.",
       "evidence": [
-        "frontend-file-summaries.txt (truncated)",
-        "project_state.json (truncated)"
+        "frontend/src/components/settings/ConnectBotWizardModal.tsx (`console.warn('Web Crypto Ed25519 not available...')`, `console.error('Failed to generate keypair:', error)`)"
       ]
     }
   ],
-  "confidence": 0.62,
+  "confidence": 0.78,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/settings/SubscriptionPanel.tsx",
+    "frontend/src/components/settings/ConnectBotWizardModal.tsx",
     "project_state.json"
   ]
 }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 23,
-  "summary": "Expand project scope to include a frontend navigation refactor: replace AppShell.tsx useState screen toggling with real (hash/state) routing across all existing screens, update DashboardHeader nav links (with admin-only gating via useIsCallerAdmin), and merge the duplicate Settings screens into a single tabbed SettingsScreen (Profile/Connect Bot/Subscription/Admin Tiers) while not modifying individual screen internals.",
+  "projectStateVersion": 29,
+  "summary": "Update SubscriptionPanel.tsx from hardcoded tier cards to dynamic tiers loaded via useListTiers with graceful fallback to existing hardcoded tiers; wire Stripe checkout via useCreateCheckoutSession and gate Subscribe buttons based on useIsStripeConfigured, adding per-tier Subscribe/Current Plan CTA while preserving existing glassmorphism styling and Popular badge.",
   "architectural_notes": [
     "Stripe integration must not modify backend/stripe/stripe.mo; actor should store optional stable StripeConfiguration and call Stripe.createCheckoutSession/getSessionStatus using existing transform function.",
     "Expose Stripe-related types (ShoppingItem, StripeSessionStatus) as public types from the actor for frontend consumption.",
@@ -18,7 +18,8 @@
     "Repeated build attempts for the getHeartbeatData change failed with the assistant reporting it 'couldn't implement that request'; root cause not identified in conversation.",
     "Motoko version lacks Runtime.cyclesBalance(); heartbeat cycles must use ExperimentalCycles.balance() or fall back to 0 with a TODO comment.",
     "Attempt to implement the `fetchSignals` structured HTTP response return and type change failed (assistant reported inability to implement); retry requested with smaller substeps.",
-    "Environment constraint: TweetNaCl and WebCrypto Ed25519 are unavailable; keypair generation must switch to `@noble/ed25519` or use the specified random-seed placeholder fallback."
+    "Environment constraint: TweetNaCl and WebCrypto Ed25519 are unavailable; keypair generation must switch to `@noble/ed25519` or use the specified random-seed placeholder fallback.",
+    "Phase B gate check found ConnectBotWizardModal keypair generation still using WebCrypto Ed25519; must switch to `@noble/ed25519` primary with specified fallback + TODO comment per REQ-24 before Phase C."
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -115,6 +116,70 @@
       "title": "Remove the support-related phrases \"Community support\", \"Priority Support\", and \"Dedicated Support\" so they no longer appear anywhere in the Subscription tab UI (including the tier features list rendering).",
       "reqIds": [
         "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-src-components-settings-subscriptionpanel-tsx-to-wire-the-existing-subscription-stripe-hooks-into-the-existing-tier-card-ui-so-it-is-interactive-clicking-a-tier-card-initiates-checkout-immediately-for-paid-tiers-and-the-user-s-currently-active-tier-is-visually-highlighted",
+      "title": "Update `frontend/src/components/settings/SubscriptionPanel.tsx` to wire the existing subscription/Stripe hooks into the existing tier-card UI so it is interactive: clicking a tier card initiates checkout immediately for paid tiers, and the user’s currently active tier is visually highlighted.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-the-subscription-tier-card-layout-responsive-across-all-screen-sizes-with-tier-cards-stacking-vertically-on-small-screens",
+      "title": "Make the Subscription tier-card layout responsive across all screen sizes, with tier cards stacking vertically on small screens.",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-optimize-the-entire-app-ui-for-all-screen-sizes-by-auditing-and-adjusting-layouts-across-major-screens-components-dashboard-trades-overview-settings-admin-and-payment-result-screens-to-prevent-overflow-cramped-spacing-and-unreadable-typography-at-common-breakpoints",
+      "title": "Optimize the entire app UI for all screen sizes by auditing and adjusting layouts across major screens/components (Dashboard, Trades, Overview, Settings, Admin, and payment result screens) to prevent overflow, cramped spacing, and unreadable typography at common breakpoints.",
+      "reqIds": [
+        "REQ-36"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-src-components-settings-subscriptionpanel-tsx-to-import-and-use-these-hooks-exactly-as-specified-by-the-user-uselisttiers-from-hooks-usesubscriptiontiers-usecreatecheckoutsession-from-hooks-usestripecheckout-and-useisstripeconfigured-from-hooks-usestripestatus",
+      "title": "Update `frontend/src/components/settings/SubscriptionPanel.tsx` to import and use these hooks exactly as specified by the user: `useListTiers` from `hooks/useSubscriptionTiers`, `useCreateCheckoutSession` from `hooks/useStripeCheckout`, and `useIsStripeConfigured` from `hooks/useStripeStatus`.",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-replace-the-hardcoded-tier-card-html-in-frontend-src-components-settings-subscriptionpanel-tsx-with-tier-data-loaded-from-uselisttiers-while-tiers-are-loading-show-a-loading-spinner-if-uselisttiers-returns-an-error-or-returns-an-empty-list-fall-back-to-the-existing-hardcoded-tiers-graceful-degradation",
+      "title": "Replace the hardcoded tier-card HTML in `frontend/src/components/settings/SubscriptionPanel.tsx` with tier data loaded from `useListTiers()`. While tiers are loading, show a loading spinner. If `useListTiers()` returns an error or returns an empty list, fall back to the existing hardcoded tiers (graceful degradation).",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-per-tier-cta-in-frontend-src-components-settings-subscriptionpanel-tsx-for-each-paid-tier-render-a-subscribe-button-that-initiates-stripe-checkout-for-the-free-tier-render-current-plan-instead-of-a-button-clicking-subscribe-must-call-createcheckoutsession-with-a-shoppingitem-containing-the-tier-s-name-description-priceincents-and-quantity-1-on-success-redirect-to-session-url-via-window-location-href-while-the-checkout-mutation-is-pending-show-a-loading-spinner-on-that-tier-s-button",
+      "title": "Add a per-tier CTA in `frontend/src/components/settings/SubscriptionPanel.tsx`: for each paid tier, render a \"Subscribe\" button that initiates Stripe checkout; for the free tier, render \"Current Plan\" instead of a button. Clicking \"Subscribe\" must call `createCheckoutSession` with a `ShoppingItem` containing the tier’s `name`, `description`, `priceInCents`, and `quantity` 1; on success redirect to `session.url` via `window.location.href`. While the checkout mutation is pending, show a loading spinner on that tier’s button.",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-gate-paid-tier-subscribing-in-frontend-src-components-settings-subscriptionpanel-tsx-using-useisstripeconfigured-when-stripe-is-not-configured-disable-all-subscribe-buttons-and-show-the-message-below-the-cards-payment-processing-is-being-configured-check-back-soon-preserve-the-existing-glassmorphism-tier-card-styling-and-the-popular-badge",
+      "title": "Gate paid-tier subscribing in `frontend/src/components/settings/SubscriptionPanel.tsx` using `useIsStripeConfigured`: when Stripe is not configured, disable all \"Subscribe\" buttons and show the message below the cards: \"Payment processing is being configured. Check back soon.\" Preserve the existing glassmorphism tier-card styling and the \"Popular\" badge.",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-src-components-settings-connectbotwizardmodal-tsx-so-handlegeneratekeypair-no-longer-uses-web-crypto-ed25519-and-instead-generates-the-ed25519-keypair-using-noble-ed25519-exactly-as-follows-import-as-ed-from-noble-ed25519-const-privatekey-ed-utils-randomprivatekey-const-publickey-await-ed-getpublickeyasync-privatekey-display-the-private-key-as-a-hex-string-bot-private-key-and-keep-the-public-key-as-a-uint8array-for-sending-to-the-backend-if-noble-ed25519-is-not-available-at-runtime-build-time-fall-back-to-generating-a-32-byte-random-seed-and-produce-a-placeholder-derived-public-key-including-the-exact-comment-todo-replace-with-real-ed25519-derivation-in-production-do-not-change-any-other-wizard-ui-steps-blur-copy-behavior-warning-text-or-the-existing-linkmutation-call-flow",
+      "title": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` so `handleGenerateKeypair` no longer uses Web Crypto Ed25519 and instead generates the Ed25519 keypair using `@noble/ed25519` exactly as follows: `import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);`. Display the private key as a hex string (BOT_PRIVATE_KEY) and keep the public key as a `Uint8Array` for sending to the backend. If `@noble/ed25519` is not available at runtime/build-time, fall back to generating a 32-byte random seed and produce a placeholder derived public key, including the exact comment: `// TODO: Replace with real Ed25519 derivation in production.`. Do not change any other wizard UI steps, blur/copy behavior, warning text, or the existing `linkMutation` call flow.",
+      "reqIds": [
+        "REQ-41"
       ],
       "version": 1
     }
@@ -343,6 +408,24 @@
     {
       "id": "AR-32",
       "summary": "Remove support-related text strings from the Subscription UI/tab: delete the phrases \"Community support\", \"Priority Support\", and \"Dedicated Support\" so they no longer appear anywhere in Subscription.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-33",
+      "summary": "Make the Subscription tab responsive and interactive by wiring existing hooks into `SubscriptionPanel.tsx`: use `useListTiers` to load tiers + determine/highlight the user’s active tier, and use `useStripeCheckout` so clicking a tier card initiates checkout immediately. Ensure layout is optimized for all screen sizes with tier cards stacking vertically on small screens.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-34",
+      "summary": "Optimize the entire app UI for ALL screen sizes (responsive layout across all screens/components), beyond just the Subscription tab.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-35",
+      "summary": "Update `frontend/src/components/settings/SubscriptionPanel.tsx` only: replace hardcoded tiers with `useListTiers()` data (show loading spinner; if error/empty, fall back to existing hardcoded tiers). Add per-paid-tier \"Subscribe\" button that calls `createCheckoutSession` (from `useCreateCheckoutSession`) with a `ShoppingItem` built from tier name/description/priceInCents and quantity=1; on success redirect `window.location.href = session.url`; show button spinner while pending. Free tier shows \"Current Plan\" instead of a button. Use `useIsStripeConfigured` to disable Subscribe buttons when false and show message: \"Payment processing is being configured. Check back soon.\" Preserve glassmorphism styling and \"Popular\" badge. Do not modify any other files.",
       "reqIds": [],
       "status": "pending"
     }

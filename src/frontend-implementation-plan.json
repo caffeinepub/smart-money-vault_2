@@ -1,21 +1,25 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Subscription tab: remove support-related feature text",
+  "title": "Fix Connect Bot Wizard Ed25519 keypair generation (@noble/ed25519)",
   "requirements": [
     {
-      "id": "REQ-33",
-      "summary": "Ensure support-related feature phrases are not rendered anywhere in the Settings → Subscription UI (including tier features list).",
+      "id": "REQ-41",
+      "summary": "Replace Web Crypto Ed25519 keypair generation with @noble/ed25519 in Connect Bot Wizard while preserving all existing wizard behavior.",
       "acceptanceCriteria": [
-        "When viewing Settings → Subscription, none of the strings \"Community support\", \"Priority Support\", or \"Dedicated Support\" appear in the UI.",
-        "Subscription tier cards still render normally (features list shows all other entries unchanged), and subscribing flow remains unaffected.",
-        "A repository-wide search limited to the Subscription tab rendering path confirms these phrases are not rendered by Subscription UI anymore (e.g., filtered out before display)."
+        "In `ConnectBotWizardModal.tsx`, `handleGenerateKeypair` does not call `window.crypto.subtle.generateKey` (or any Web Crypto Ed25519 generation) on the normal path.",
+        "On the normal path, `privateKey` is generated with `ed.utils.randomPrivateKey()` and `publicKey` is derived using `await ed.getPublicKeyAsync(privateKey)` (public key is not independent random bytes).",
+        "The private key displayed and copied is a hex string derived from the generated private key (BOT_PRIVATE_KEY), and the public key remains a `Uint8Array` used by the existing `linkMutation.mutateAsync(keypair.publicKey)` flow.",
+        "If noble is unavailable, the code falls back to a 32-byte random seed and produces a placeholder derived public key, and the source includes the exact comment `// TODO: Replace with real Ed25519 derivation in production.`.",
+        "The modal’s step flow remains unchanged (generate → reveal → link → url → done), and the warning text remains exactly: `Paste this into your Python Bot's .env file as BOT_PRIVATE_KEY. This will not be shown again.`",
+        "The private key input remains blurred by default and copyable, and sensitive data is still cleared on close as currently implemented.",
+        "No new console errors are introduced when generating keys, linking the public key, or saving the bot URL."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/settings/SubscriptionPanel.tsx",
+          "path": "frontend/src/components/settings/ConnectBotWizardModal.tsx",
           "operation": "modify",
-          "description": "Filter out the feature strings \"Community support\", \"Priority Support\", and \"Dedicated Support\" from the tier features list before rendering (e.g., via a small denylist + normalization/trim), so these phrases never appear in the Subscription tab UI while leaving all other features and the checkout flow unchanged."
+          "description": "Update `handleGenerateKeypair` to generate Ed25519 keys using `@noble/ed25519` exactly as specified (`import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);`). Display BOT_PRIVATE_KEY as a hex string derived from `privateKey` (while keeping `publicKey` as `Uint8Array` for the existing `linkMutation.mutateAsync(keypair.publicKey)` flow). Implement a runtime/build-time fallback when noble is unavailable: generate a 32-byte random seed and create a placeholder derived public key, and include the exact comment `// TODO: Replace with real Ed25519 derivation in production.`. Preserve all existing wizard steps, blur/copy behavior, warning text, and close-clearing behavior; avoid introducing new console errors."
         }
       ]
     }

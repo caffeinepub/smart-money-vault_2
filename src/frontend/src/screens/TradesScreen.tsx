@@ -46,25 +46,25 @@ export default function TradesScreen() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-white">Trades</h2>
-          <p className="text-sm text-white/60">View and filter your trade history</p>
+          <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">Trades</h2>
+          <p className="text-xs text-white/60 sm:text-sm">View and filter your trade history</p>
         </div>
 
         {/* Filters */}
         <Card className="border-white/5 bg-[#000000]">
           <CardHeader>
-            <CardTitle className="text-white">Filters</CardTitle>
-            <CardDescription className="text-white/60">
+            <CardTitle className="text-base text-white sm:text-lg">Filters</CardTitle>
+            <CardDescription className="text-xs text-white/60 sm:text-sm">
               Filter trades by account and time range
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="accountFilter" className="text-white/80">
+                <Label htmlFor="accountFilter" className="text-xs text-white/80 sm:text-sm">
                   Account ID
                 </Label>
                 <Input
@@ -75,11 +75,11 @@ export default function TradesScreen() {
                     setPage(0);
                   }}
                   placeholder="Filter by account..."
-                  className="border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                  className="border-white/10 bg-white/5 text-sm text-white placeholder:text-white/40"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="startTime" className="text-white/80">
+                <Label htmlFor="startTime" className="text-xs text-white/80 sm:text-sm">
                   Start Date
                 </Label>
                 <Input
@@ -90,11 +90,11 @@ export default function TradesScreen() {
                     setStartTimeFilter(e.target.value);
                     setPage(0);
                   }}
-                  className="border-white/10 bg-white/5 text-white"
+                  className="border-white/10 bg-white/5 text-sm text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="endTime" className="text-white/80">
+                <Label htmlFor="endTime" className="text-xs text-white/80 sm:text-sm">
                   End Date
                 </Label>
                 <Input
@@ -105,7 +105,7 @@ export default function TradesScreen() {
                     setEndTimeFilter(e.target.value);
                     setPage(0);
                   }}
-                  className="border-white/10 bg-white/5 text-white"
+                  className="border-white/10 bg-white/5 text-sm text-white"
                 />
               </div>
             </div>
@@ -114,7 +114,7 @@ export default function TradesScreen() {
                 onClick={handleResetFilters}
                 variant="outline"
                 size="sm"
-                className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="border-white/10 bg-white/5 text-xs text-white hover:bg-white/10 sm:text-sm"
               >
                 Reset Filters
               </Button>
@@ -125,8 +125,8 @@ export default function TradesScreen() {
         {/* Trades Table */}
         <Card className="border-white/5 bg-[#000000]">
           <CardHeader>
-            <CardTitle className="text-white">Trade History</CardTitle>
-            <CardDescription className="text-white/60">
+            <CardTitle className="text-base text-white sm:text-lg">Trade History</CardTitle>
+            <CardDescription className="text-xs text-white/60 sm:text-sm">
               {trades && trades.length > 0
                 ? `Showing ${page * PAGE_SIZE + 1}-${page * PAGE_SIZE + trades.length} trades`
                 : 'No trades found'}
@@ -139,7 +139,7 @@ export default function TradesScreen() {
               </div>
             ) : !trades || trades.length === 0 ? (
               <div className="flex h-64 items-center justify-center">
-                <p className="text-white/60">No trades found</p>
+                <p className="text-sm text-white/60">No trades found</p>
               </div>
             ) : (
               <>
@@ -147,15 +147,15 @@ export default function TradesScreen() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-white/5 hover:bg-transparent">
-                        <TableHead className="text-white/60">Trade ID</TableHead>
-                        <TableHead className="text-white/60">Account</TableHead>
-                        <TableHead className="text-white/60">Side</TableHead>
-                        <TableHead className="text-white/60">Instrument</TableHead>
-                        <TableHead className="text-right text-white/60">Size</TableHead>
-                        <TableHead className="text-right text-white/60">Entry Price</TableHead>
-                        <TableHead className="text-right text-white/60">Exit Price</TableHead>
-                        <TableHead className="text-right text-white/60">P&L</TableHead>
-                        <TableHead className="text-white/60">Entry Time</TableHead>
+                        <TableHead className="text-xs text-white/60 sm:text-sm">Trade ID</TableHead>
+                        <TableHead className="text-xs text-white/60 sm:text-sm">Account</TableHead>
+                        <TableHead className="text-xs text-white/60 sm:text-sm">Side</TableHead>
+                        <TableHead className="text-xs text-white/60 sm:text-sm">Instrument</TableHead>
+                        <TableHead className="text-right text-xs text-white/60 sm:text-sm">Size</TableHead>
+                        <TableHead className="text-right text-xs text-white/60 sm:text-sm">Entry Price</TableHead>
+                        <TableHead className="text-right text-xs text-white/60 sm:text-sm">Exit Price</TableHead>
+                        <TableHead className="text-right text-xs text-white/60 sm:text-sm">P&L</TableHead>
+                        <TableHead className="text-xs text-white/60 sm:text-sm">Entry Time</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -166,10 +166,10 @@ export default function TradesScreen() {
                             key={trade.tradeId}
                             className="border-white/5 hover:bg-white/5"
                           >
-                            <TableCell className="font-mono text-sm text-white">
+                            <TableCell className="font-mono text-xs text-white sm:text-sm">
                               {trade.tradeId}
                             </TableCell>
-                            <TableCell className="font-mono text-sm text-white/80">
+                            <TableCell className="font-mono text-xs text-white/80 sm:text-sm">
                               {trade.accountId}
                             </TableCell>
                             <TableCell>
@@ -194,17 +194,17 @@ export default function TradesScreen() {
                                 )}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-white">{trade.instrument}</TableCell>
-                            <TableCell className="text-right text-white">
+                            <TableCell className="text-xs text-white sm:text-sm">{trade.instrument}</TableCell>
+                            <TableCell className="text-right text-xs text-white sm:text-sm">
                               {trade.size.toFixed(4)}
                             </TableCell>
-                            <TableCell className="text-right text-white">
+                            <TableCell className="text-right text-xs text-white sm:text-sm">
                               ${trade.entryPrice.toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right text-white/80">
+                            <TableCell className="text-right text-xs text-white/80 sm:text-sm">
                               {trade.exitPrice ? `$${trade.exitPrice.toFixed(2)}` : '—'}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right text-xs sm:text-sm">
                               {pnl !== null ? (
                                 <span
                                   className={
@@ -217,7 +217,7 @@ export default function TradesScreen() {
                                 <span className="text-white/40">—</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-sm text-white/60">
+                            <TableCell className="text-xs text-white/60 sm:text-sm">
                               {formatTimestamp(trade.entryTimestamp)}
                             </TableCell>
                           </TableRow>
@@ -229,7 +229,7 @@ export default function TradesScreen() {
 
                 {/* Pagination */}
                 <div className="mt-4 flex items-center justify-between">
-                  <p className="text-sm text-white/60">
+                  <p className="text-xs text-white/60 sm:text-sm">
                     Page {page + 1}
                   </p>
                   <div className="flex space-x-2">

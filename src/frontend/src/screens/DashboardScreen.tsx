@@ -5,7 +5,7 @@ import AuditLedgerPanel from '../components/dashboard/AuditLedgerPanel';
 
 export default function DashboardScreen() {
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Bento Grid Layout */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Top Left - Uplink Controller (Hero) */}

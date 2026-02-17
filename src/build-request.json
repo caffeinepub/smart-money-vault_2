@@ -1,39 +1,56 @@
 {
   "kind": "build_request",
-  "title": "Remove support-related text from Subscription tab",
+  "title": "Fix Connect Bot Wizard Ed25519 keypair generation",
   "projectName": "Smart Money Vault",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-33",
-      "text": "Remove the support-related phrases \"Community support\", \"Priority Support\", and \"Dedicated Support\" so they no longer appear anywhere in the Subscription tab UI (including the tier features list rendering).",
+      "id": "REQ-41",
+      "text": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` so `handleGenerateKeypair` no longer uses Web Crypto Ed25519 and instead generates the Ed25519 keypair using `@noble/ed25519` exactly as follows: `import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);`. Display the private key as a hex string (BOT_PRIVATE_KEY) and keep the public key as a `Uint8Array` for sending to the backend. If `@noble/ed25519` is not available at runtime/build-time, fall back to generating a 32-byte random seed and produce a placeholder derived public key, including the exact comment: `// TODO: Replace with real Ed25519 derivation in production.`. Do not change any other wizard UI steps, blur/copy behavior, warning text, or the existing `linkMutation` call flow.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "recent-messages"
+          "msg-4",
+          "msg-5"
         ],
         "quotes": [
-          "Fully remove the texts from Subscription - i dont do ANY Support ever in my life: \"Community support\", \"Priority Support\" and \"Dedicated Support\".",
-          "Build now"
+          "MAIN BLOCKER Only one failure: Connect Bot Wizard keypair generation must switch to @noble/ed25519 exactly as defined in REQ‑24.",
+          "Fix now"
         ]
       },
       "acceptanceCriteria": [
-        "When viewing Settings → Subscription, none of the strings \"Community support\", \"Priority Support\", or \"Dedicated Support\" appear in the UI.",
-        "Subscription tier cards still render normally (features list shows all other entries unchanged), and subscribing flow remains unaffected.",
-        "A repository-wide search limited to the Subscription tab rendering path confirms these phrases are not rendered by Subscription UI anymore (e.g., filtered out before display)."
+        "In `ConnectBotWizardModal.tsx`, `handleGenerateKeypair` does not call `window.crypto.subtle.generateKey` (or any Web Crypto Ed25519 generation) on the normal path.",
+        "On the normal path, `privateKey` is generated with `ed.utils.randomPrivateKey()` and `publicKey` is derived using `await ed.getPublicKeyAsync(privateKey)` (public key is not independent random bytes).",
+        "The private key displayed and copied is a hex string derived from the generated private key (BOT_PRIVATE_KEY), and the public key remains a `Uint8Array` used by the existing `linkMutation.mutateAsync(keypair.publicKey)` flow.",
+        "If noble is unavailable, the code falls back to a 32-byte random seed and produces a placeholder derived public key, and the source includes the exact comment `// TODO: Replace with real Ed25519 derivation in production.`.",
+        "The modal’s step flow remains unchanged (generate → reveal → link → url → done), and the warning text remains exactly: `Paste this into your Python Bot's .env file as BOT_PRIVATE_KEY. This will not be shown again.`",
+        "The private key input remains blurred by default and copyable, and sensitive data is still cleared on close as currently implemented.",
+        "No new console errors are introduced when generating keys, linking the public key, or saving the bot URL."
       ]
     }
   ],
   "constraints": [
-    "Use English for any user-facing text.",
-    "Frontend immutable paths must not be modified: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui (compose-only)."
+    "Frontend immutable paths must not be edited: `frontend/src/hooks/useInternetIdentity.ts`, `frontend/src/hooks/useActor.ts`, `frontend/src/main.tsx`, `frontend/src/components/ui/*`.",
+    "Keep all user-facing text in English.",
+    "Do not change any other wizard behavior beyond the key generation implementation (steps, blur/copy behavior, existing mutation flows)."
   ],
   "nonGoals": [
-    "Do not change backend tier data, Stripe logic, or subscription pricing behavior.",
-    "Do not modify routing, admin gating, or other Settings tabs beyond the Subscription UI text removal."
+    "Do not change backend signature verification or uplink logic.",
+    "Do not refactor routing, settings tabs, or subscription/Stripe UI as part of this fix.",
+    "Do not modify `backend/stripe/stripe.mo` or any backend code for this request."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

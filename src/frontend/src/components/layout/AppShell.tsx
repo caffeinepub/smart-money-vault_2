@@ -33,87 +33,73 @@ export default function AppShell() {
       }
 
       // Handle hash-based routing
-      if (hash) {
-        const validScreens: Screen[] = ['dashboard', 'trades', 'admin', 'overview', 'settings'];
-        if (validScreens.includes(hash as Screen)) {
-          setCurrentScreen(hash as Screen);
-          return;
-        }
+      if (hash === 'dashboard' || hash === '') {
+        setCurrentScreen('dashboard');
+      } else if (hash === 'trades') {
+        setCurrentScreen('trades');
+      } else if (hash === 'admin') {
+        setCurrentScreen('admin');
+      } else if (hash === 'overview') {
+        setCurrentScreen('overview');
+      } else if (hash === 'settings') {
+        setCurrentScreen('settings');
       }
-
-      // Default to dashboard
-      setCurrentScreen('dashboard');
     };
 
     updateRouteFromUrl();
-
-    // Listen for hash changes
-    const handleHashChange = () => {
-      updateRouteFromUrl();
-    };
-
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', updateRouteFromUrl);
+    return () => window.removeEventListener('popstate', updateRouteFromUrl);
   }, []);
 
   const handleNavigate = (screen: Screen) => {
+    setCurrentScreen(screen);
     if (screen === 'payment-success' || screen === 'payment-failure') {
-      // Payment screens use pathname
       window.history.pushState({}, '', `/${screen}`);
     } else {
-      // Other screens use hash routing
       window.location.hash = screen;
     }
-    setCurrentScreen(screen);
   };
 
-  const handleNavigateHome = () => {
-    window.history.pushState({}, '', '/');
-    window.location.hash = 'dashboard';
-    setCurrentScreen('dashboard');
-  };
-
-  // Payment screens don't show header/footer
-  if (currentScreen === 'payment-success') {
-    return <PaymentSuccessScreen onNavigateHome={handleNavigateHome} />;
-  }
-
-  if (currentScreen === 'payment-failure') {
-    return <PaymentFailureScreen onNavigateHome={handleNavigateHome} />;
-  }
+  const showHeaderFooter = currentScreen !== 'payment-success' && currentScreen !== 'payment-failure';
 
   return (
-    <div className="flex h-screen flex-col bg-[#0A0A0A]">
-      {/* Glassmorphism Header */}
-      <DashboardHeader
-        currentScreen={currentScreen}
-        onNavigate={handleNavigate}
-        userProfile={userProfile}
-      />
+    <div className="flex min-h-screen flex-col bg-[#050505]">
+      {showHeaderFooter && (
+        <DashboardHeader
+          currentScreen={currentScreen}
+          onNavigate={handleNavigate}
+          userProfile={userProfile}
+        />
+      )}
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-x-hidden">
         {currentScreen === 'dashboard' && <DashboardScreen />}
         {currentScreen === 'trades' && <TradesScreen />}
+        {currentScreen === 'admin' && <AdminScreen />}
         {currentScreen === 'overview' && <OverviewScreen />}
         {currentScreen === 'settings' && <SettingsScreen />}
-        {currentScreen === 'admin' && <AdminScreen />}
+        {currentScreen === 'payment-success' && <PaymentSuccessScreen onNavigate={handleNavigate} />}
+        {currentScreen === 'payment-failure' && <PaymentFailureScreen onNavigate={handleNavigate} />}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 bg-[#121212]/80 px-6 py-3 backdrop-blur-xl">
-        <p className="text-center text-xs text-white/30">
-          © {new Date().getFullYear()}. Built with <Heart className="inline h-3 w-3 text-rose-500" /> using{' '}
-          <a
-            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-white/40 transition-colors hover:text-white/60"
-          >
-            caffeine.ai
-          </a>
-        </p>
-      </footer>
+      {showHeaderFooter && (
+        <footer className="border-t border-white/5 bg-[#121212]/80 px-4 py-4 text-center backdrop-blur-xl sm:px-6">
+          <p className="text-xs text-white/40 sm:text-sm">
+            © {new Date().getFullYear()} Built with{' '}
+            <Heart className="inline h-3 w-3 text-profit sm:h-4 sm:w-4" /> using{' '}
+            <a
+              href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
+                window.location.hostname
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-profit hover:underline"
+            >
+              caffeine.ai
+            </a>
+          </p>
+        </footer>
+      )}
     </div>
   );
 }
