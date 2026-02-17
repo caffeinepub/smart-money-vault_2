@@ -1,139 +1,79 @@
 {
   "kind": "build_request",
-  "title": "Return structured HTTP response from fetchSignals and update public types",
-  "projectName": "Smart Money Vault",
+  "title": "Fix Ed25519 keypair generation in Connect Bot Wizard",
+  "projectName": "SmartMoneyVault",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-13",
-      "text": "Update the backend public type `SignalFetchResult` in `backend/main.mo` to return a structured HTTP response payload instead of `[Signal]`, changing it to: `#ok : { statusCode : Nat; body : Text; timestamp : Int } | #err : BotError` (keeping the existing `BotError` variants unchanged).",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Change SignalFetchResult to:\n  #ok : { statusCode: Nat; body: Text; timestamp: Int }\n  #err : BotError"
-        ]
-      },
-      "acceptanceCriteria": [
-        "`backend/main.mo` defines `public type SignalFetchResult` with `#ok` carrying a record `{ statusCode : Nat; body : Text; timestamp : Int }` and `#err : BotError`.",
-        "The canister interface (Candid) reflects the new `SignalFetchResult` shape so the frontend can compile against it."
-      ]
-    },
-    {
-      "id": "REQ-14",
-      "text": "In `backend/main.mo`, update `fetchSignals` so that after a successful HTTP outcall (i.e., after `response = await OutCall.httpGetRequest(...)` completes without trapping), the function returns `#ok({ statusCode = 200; body = response; timestamp = Time.now() })` instead of `#ok([])`.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Currently line 663 returns #ok([]) after the outcall succeeds.\nThe variable `response` contains the HTTP response body as Text.",
-          "On success (the outcall completed without trapping):\n  Return #ok({ statusCode = 200, body = response,\n    timestamp = Time.now() })."
-        ]
-      },
-      "acceptanceCriteria": [
-        "On the success path (valid https URL, outcall completes), `fetchSignals` returns `#ok` with `statusCode = 200`, `body = response`, and `timestamp = Time.now()`.",
-        "`fetchSignals` does not attempt to parse JSON into `Signal` records."
-      ]
-    },
-    {
-      "id": "REQ-15",
-      "text": "Keep the existing `fetchSignals` error behavior in `backend/main.mo` unchanged: on authorization failure, missing bot profile, missing bot URL, invalid URL, or any existing error case, continue returning the same `#err` variants and messages as currently implemented.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "On any error, keep the existing #err returns.",
-          "Do not modify any other endpoints."
-        ]
-      },
-      "acceptanceCriteria": [
-        "All existing `#err(...)` return paths in `fetchSignals` remain present and return the same `BotError` variants/messages as before.",
-        "No other public methods besides `fetchSignals` and the necessary public type definitions are changed."
-      ]
-    },
-    {
-      "id": "REQ-16",
-      "text": "In `backend/main.mo`, ensure `fetchSignals` still updates the caller’s bot profile heartbeat timestamp exactly as it currently does (i.e., set `lastHeartbeat = Time.now()` in the stored `BotProfile`) on the successful outcall path.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Still update lastHeartbeat as currently implemented."
-        ]
-      },
-      "acceptanceCriteria": [
-        "After a successful `fetchSignals` call, the stored `BotProfile.lastHeartbeat` for the caller is updated to a new `Time.now()` value as before."
-      ]
-    },
-    {
-      "id": "REQ-17",
-      "text": "In `backend/main.mo`, add an audit log entry on the successful outcall path of `fetchSignals` whose details include the first 100 characters of the HTTP response body (or the full body if it is <= 100 characters), using the exact prefix format: `\"Signals fetched: \" # <snippet>`.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "Add an audit entry that includes the first 100 characters of the\nresponse body: \"Signals fetched: \" # (if response.size() > 100\nthen take first 100 chars else full response)."
-        ]
-      },
-      "acceptanceCriteria": [
-        "On success, an audit entry is added with action `FETCH_SIGNALS` (or the existing action used for fetchSignals) and details that begin with `Signals fetched: ` followed by a snippet of `response` capped at 100 characters.",
-        "If `response.size() <= 100`, the full `response` text is included after the prefix."
-      ]
-    },
-    {
-      "id": "REQ-18",
-      "text": "Update the frontend connectivity-test hook `frontend/src/hooks/useFetchSignalsTest.ts` to handle the new `fetchSignals` success shape (`{ statusCode; body; timestamp }`) and update the success toast message to reflect the structured result (e.g., include status code and/or body length) rather than `signals.length`.",
+      "id": "REQ-21",
+      "text": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` so the Connect Bot Wizard generates a real Ed25519 keypair (where the public key matches the private key) using TweetNaCl (`tweetnacl`) if available; if TweetNaCl is not available, use `@noble/ed25519` instead, and if dependency installation is not possible, fall back to Web Crypto API Ed25519 key generation.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "Update the public type definitions so the frontend can consume\nthe new result shape."
+          "Fix the Ed25519 key generation in the Connect Bot Wizard.",
+          "Import tweetnacl: import nacl from 'tweetnacl'. If tweetnacl is not available, use @noble/ed25519 instead.",
+          "If Caffeine cannot install npm packages, use the Web Crypto API: const keyPair = await crypto.subtle.generateKey({ name: \"Ed25519\" }, true, [\"sign\", \"verify\"])."
         ]
       },
       "acceptanceCriteria": [
-        "`useFetchSignalsTest` compiles with the updated `fetchSignals` return type and no longer assumes `result.ok` is an array.",
-        "On success, the toast message is in English and references the structured payload (e.g., `statusCode` and/or `body`), without referencing a signals array length."
+        "Clicking “Generate Bot Identity” results in a cryptographically valid Ed25519 keypair where the generated `publicKey` corresponds to the generated private key (no unrelated random buffers).",
+        "The implementation prefers `import nacl from 'tweetnacl'` and uses `nacl.sign.keyPair()` when TweetNaCl is available.",
+        "When using TweetNaCl, the wizard stores `publicKey` as `Uint8Array(32)` and displays/stores the private key as a hex string derived from the 64-byte `secretKey` (`Uint8Array(64)`) returned by TweetNaCl.",
+        "If TweetNaCl is unavailable, the implementation uses `@noble/ed25519` to generate a proper Ed25519 keypair; if dependency installation is not possible, it uses Web Crypto API Ed25519 and exports raw keys into `Uint8Array` as needed."
       ]
     },
     {
-      "id": "REQ-19",
-      "text": "Regenerate or update the frontend’s backend interface type definitions (e.g., the generated declarations used by the actor) so TypeScript correctly reflects the updated `SignalFetchResult` Candid type and `actor.fetchSignals()` return type.",
+      "id": "REQ-22",
+      "text": "Replace the existing `handleGenerateKeypair` implementation in `frontend/src/components/settings/ConnectBotWizardModal.tsx` with the Ed25519 key generation flow specified by the user: generate the keypair, display the private key as a hex string (BOT_PRIVATE_KEY), and keep the public key as a `Uint8Array` for sending to the backend; keep all other wizard steps, UI behaviors (blur/copy), and the existing `linkMutation` call flow unchanged.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "Update the public type definitions so the frontend can consume\nthe new result shape."
+          "Replace handleGenerateKeypair: - Generate a real Ed25519 keypair: nacl.sign.keyPair()",
+          "Display secretKey as hex string (this is the BOT_PRIVATE_KEY)",
+          "Store publicKey as Uint8Array for sending to backend",
+          "Keep the rest of the wizard flow unchanged: the blur/copy UI for private key display and the linkMutation call for public key.",
+          "Do not modify any other files or components."
         ]
       },
       "acceptanceCriteria": [
-        "Frontend TypeScript builds without type errors related to `SignalFetchResult` or `actor.fetchSignals()`.",
-        "The frontend’s declared `SignalFetchResult` type matches the backend’s new `#ok` record shape (`statusCode`, `body`, `timestamp`) and the existing `#err : BotError` union."
+        "Only `handleGenerateKeypair` logic is changed within `frontend/src/components/settings/ConnectBotWizardModal.tsx`; all other steps, labels, buttons, and mutation calls behave exactly as before.",
+        "The generated private key shown to the user is a hex string derived from the key generation output (TweetNaCl `secretKey` preferred).",
+        "`handleLinkPublicKey` continues to send the generated `Uint8Array` public key to `linkMutation.mutateAsync(...)` without additional transformations."
+      ]
+    },
+    {
+      "id": "REQ-23",
+      "text": "If TweetNaCl is not currently present in the project dependencies, add it as a frontend dependency so `import nacl from 'tweetnacl'` compiles and runs; do not introduce any other dependency changes beyond what is required to support the Ed25519 keypair generation fix.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "If tweetnacl is not installed as a dependency: Add it. In the package.json or equivalent, add tweetnacl."
+        ]
+      },
+      "acceptanceCriteria": [
+        "The frontend builds successfully with `import nacl from 'tweetnacl'` used in `ConnectBotWizardModal.tsx` (or uses the specified fallback when TweetNaCl cannot be added).",
+        "No unrelated dependency updates are introduced."
       ]
     }
   ],
   "constraints": [
-    "Do not modify any other endpoints besides `fetchSignals` and the necessary public type definitions required to expose the new `SignalFetchResult` shape.",
-    "Do not parse arbitrary JSON into `Signal` records in Motoko for this MVP; return the raw HTTP response body as `Text`.",
-    "Use English for any user-facing text."
+    "Use English for any user-facing text.",
+    "Do not modify any other files or components beyond what is strictly necessary to implement the Ed25519 keypair generation fix (dependency manifest edits are allowed only if required to add TweetNaCl).",
+    "Keep the Connect Bot Wizard flow unchanged (generate -> reveal -> link -> url -> done), including the existing blur/copy UI and the existing `linkMutation` call for public key linking.",
+    "Do not edit any frontend paths marked immutable by the system context (e.g., `frontend/src/hooks/useActor.ts`, `frontend/src/main.tsx`, and `frontend/src/components/ui/*`)."
   ],
   "nonGoals": [
-    "Implementing JSON parsing of the HTTP response into `[Signal]` on the backend.",
-    "Changing the HTTP outcall mechanism (`OutCall.httpGetRequest`) or the existing `transform` function behavior.",
-    "Adding new frontend screens or UI panels beyond updating existing connectivity test behavior."
+    "Implementing backend-side Ed25519 signature verification (this is explicitly deferred elsewhere).",
+    "Changing the Connect Bot Wizard UI/UX, step order, validation rules, or mutation hook behavior beyond the key generation logic."
   ],
   "imageRequirements": {
     "required": [],

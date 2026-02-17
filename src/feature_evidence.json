@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-frontend-connectivity-test-hook-frontend-src-hooks-usefetchsignalstest-ts-to-handle-the-new-fetchsignals-success-shape-statuscode-body-timestamp-and-update-the-success-toast-message-to-reflect-the-structured-result-e-g-include-status-code-and-or-body-length-rather-than-signals-length",
-      "featureTitle": "Update the frontend connectivity-test hook `frontend/src/hooks/useFetchSignalsTest.ts` to handle the new `fetchSignals` success shape (`{ statusCode; body; timestamp }`) and update the success toast message to reflect the structured result (e.g., include status code and/or body length) rather than `signals.length`.",
+      "featureId": "feature-update-frontend-src-components-settings-connectbotwizardmodal-tsx-so-the-connect-bot-wizard-generates-a-real-ed25519-keypair-where-the-public-key-matches-the-private-key-using-tweetnacl-tweetnacl-if-available-if-tweetnacl-is-not-available-use-noble-ed25519-instead-and-if-dependency-installation-is-not-possible-fall-back-to-web-crypto-api-ed25519-key-generation",
+      "featureTitle": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` so the Connect Bot Wizard generates a real Ed25519 keypair (where the public key matches the private key) using TweetNaCl (`tweetnacl`) if available; if TweetNaCl is not available, use `@noble/ed25519` instead, and if dependency installation is not possible, fall back to Web Crypto API Ed25519 key generation.",
       "files": [
-        "frontend/src/hooks/useFetchSignalsTest.ts"
+        "frontend/src/components/settings/ConnectBotWizardModal.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,14 +18,16 @@
         "stripe@3.0.0"
       ],
       "testIds": [
-        "REQ-18"
+        "REQ-21"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-regenerate-or-update-the-frontend-s-backend-interface-type-definitions-e-g-the-generated-declarations-used-by-the-actor-so-typescript-correctly-reflects-the-updated-signalfetchresult-candid-type-and-actor-fetchsignals-return-type",
-      "featureTitle": "Regenerate or update the frontend’s backend interface type definitions (e.g., the generated declarations used by the actor) so TypeScript correctly reflects the updated `SignalFetchResult` Candid type and `actor.fetchSignals()` return type.",
-      "files": [],
+      "featureId": "feature-replace-the-existing-handlegeneratekeypair-implementation-in-frontend-src-components-settings-connectbotwizardmodal-tsx-with-the-ed25519-key-generation-flow-specified-by-the-user-generate-the-keypair-display-the-private-key-as-a-hex-string-bot-private-key-and-keep-the-public-key-as-a-uint8array-for-sending-to-the-backend-keep-all-other-wizard-steps-ui-behaviors-blur-copy-and-the-existing-linkmutation-call-flow-unchanged",
+      "featureTitle": "Replace the existing `handleGenerateKeypair` implementation in `frontend/src/components/settings/ConnectBotWizardModal.tsx` with the Ed25519 key generation flow specified by the user: generate the keypair, display the private key as a hex string (BOT_PRIVATE_KEY), and keep the public key as a `Uint8Array` for sending to the backend; keep all other wizard steps, UI behaviors (blur/copy), and the existing `linkMutation` call flow unchanged.",
+      "files": [
+        "frontend/src/components/settings/ConnectBotWizardModal.tsx"
+      ],
       "components": [
         "authorization@4.0.0",
         "core-infrastructure@1.0.2",
@@ -37,7 +39,7 @@
         "stripe@3.0.0"
       ],
       "testIds": [
-        "REQ-19"
+        "REQ-22"
       ],
       "confidence": "high"
     }

@@ -1,86 +1,54 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T00:59:35.065Z",
+  "generatedAt": "2026-02-17T01:21:21.677Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 7,
+    "total": 3,
     "implemented": 2,
     "items": [
       {
-        "id": "REQ-13",
-        "summary": "Update the backend public type `SignalFetchResult` in `backend/main.mo` to return a structured HTTP response payload instead of `[Signal]`, changing it to: `#ok : { statusCode : Nat; body : Text; timestamp : Int } | #err : BotError` (keeping the existing `BotError` variants unchanged).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-14",
-        "summary": "In `backend/main.mo`, update `fetchSignals` so that after a successful HTTP outcall (i.e., after `response = await OutCall.httpGetRequest(...)` completes without trapping), the function returns `#ok({ statusCode = 200; body = response; timestamp = Time.now() })` instead of `#ok([])`.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-15",
-        "summary": "Keep the existing `fetchSignals` error behavior in `backend/main.mo` unchanged: on authorization failure, missing bot profile, missing bot URL, invalid URL, or any existing error case, continue returning the same `#err` variants and messages as currently implemented.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-16",
-        "summary": "In `backend/main.mo`, ensure `fetchSignals` still updates the caller’s bot profile heartbeat timestamp exactly as it currently does (i.e., set `lastHeartbeat = Time.now()` in the stored `BotProfile`) on the successful outcall path.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-17",
-        "summary": "In `backend/main.mo`, add an audit log entry on the successful outcall path of `fetchSignals` whose details include the first 100 characters of the HTTP response body (or the full body if it is <= 100 characters), using the exact prefix format: `\"Signals fetched: \" # <snippet>`.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-18",
-        "summary": "Update the frontend connectivity-test hook `frontend/src/hooks/useFetchSignalsTest.ts` to handle the new `fetchSignals` success shape (`{ statusCode; body; timestamp }`) and update the success toast message to reflect the structured result (e.g., include status code and/or body length) rather than `signals.length`.",
+        "id": "REQ-21",
+        "summary": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` so the Connect Bot Wizard generates a real Ed25519 keypair (where the public key matches the private key) using TweetNaCl (`tweetnacl`) if available; if TweetNaCl is not available, use `@noble/ed25519` instead, and if dependency installation is not possible, fall back to Web Crypto API Ed25519 key generation.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useFetchSignalsTest.ts"
+          "frontend/src/components/settings/ConnectBotWizardModal.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useFetchSignalsTest.ts"
+          "frontend/src/components/settings/ConnectBotWizardModal.tsx"
         ]
       },
       {
-        "id": "REQ-19",
-        "summary": "Regenerate or update the frontend’s backend interface type definitions (e.g., the generated declarations used by the actor) so TypeScript correctly reflects the updated `SignalFetchResult` Candid type and `actor.fetchSignals()` return type.",
+        "id": "REQ-22",
+        "summary": "Replace the existing `handleGenerateKeypair` implementation in `frontend/src/components/settings/ConnectBotWizardModal.tsx` with the Ed25519 key generation flow specified by the user: generate the keypair, display the private key as a hex string (BOT_PRIVATE_KEY), and keep the public key as a `Uint8Array` for sending to the backend; keep all other wizard steps, UI behaviors (blur/copy), and the existing `linkMutation` call flow unchanged.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/backend.d.ts"
+          "frontend/src/components/settings/ConnectBotWizardModal.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/backend.d.ts"
+          "frontend/src/components/settings/ConnectBotWizardModal.tsx"
         ]
+      },
+      {
+        "id": "REQ-23",
+        "summary": "If TweetNaCl is not currently present in the project dependencies, add it as a frontend dependency so `import nacl from 'tweetnacl'` compiles and runs; do not introduce any other dependency changes beyond what is required to support the Ed25519 keypair generation fix.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/package.json"
+        ],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useEquityCurve.ts",
-    "frontend/src/hooks/useFetchSignalsTest.ts",
+    "frontend/src/components/settings/ConnectBotWizardModal.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -8,7 +8,6 @@ import { useLinkBotPublicKey } from '../../hooks/useLinkBotPublicKey';
 import { useSetBotUrl } from '../../hooks/useSetBotUrl';
 import { Key, Copy, CheckCircle2, AlertTriangle, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { bytesToHex } from '../../utils/encoding';
 
 interface ConnectBotWizardModalProps {
   open: boolean;
@@ -16,6 +15,28 @@ interface ConnectBotWizardModalProps {
 }
 
 type WizardStep = 'generate' | 'reveal' | 'link' | 'url' | 'done';
+
+// Helper function to convert base64url to Uint8Array
+function base64UrlToUint8Array(base64url: string): Uint8Array {
+  // Convert base64url to base64
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  // Add padding if needed
+  const padded = base64 + '==='.slice((base64.length + 3) % 4);
+  // Decode base64
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Helper function to convert Uint8Array to hex string
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizardModalProps) {
   const [step, setStep] = useState<WizardStep>('generate');
@@ -39,21 +60,23 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
         ['sign', 'verify']
       );
 
-      // Export the public key (32 bytes)
+      // Export the public key (32 bytes) in raw format
       const publicKeyBuffer = await window.crypto.subtle.exportKey('raw', cryptoKeyPair.publicKey);
       const publicKey = new Uint8Array(publicKeyBuffer);
 
-      // Export the private key in PKCS8 format, then extract the raw 32-byte seed
-      const privateKeyBuffer = await window.crypto.subtle.exportKey('pkcs8', cryptoKeyPair.privateKey);
-      const privateKeyBytes = new Uint8Array(privateKeyBuffer);
+      // Export the private key in JWK format to get the raw key material
+      const privateKeyJwk = await window.crypto.subtle.exportKey('jwk', cryptoKeyPair.privateKey) as JsonWebKey;
       
-      // PKCS8 format for Ed25519: the last 32 bytes are the seed, preceded by the public key
-      // For Ed25519, we need to extract the 32-byte seed from the PKCS8 structure
-      // The seed is at a specific offset in the PKCS8 DER encoding
-      const seedOffset = privateKeyBytes.length - 64; // Last 64 bytes contain seed (32) + public key (32)
-      const seed = privateKeyBytes.slice(seedOffset, seedOffset + 32);
+      // The 'd' field in JWK contains the 32-byte private key (seed) in base64url format
+      if (!privateKeyJwk.d) {
+        throw new Error('Failed to extract private key from JWK');
+      }
       
-      // Create a 64-byte private key by concatenating seed + public key (Ed25519 convention)
+      // Convert base64url 'd' to Uint8Array (32 bytes seed)
+      const seed = base64UrlToUint8Array(privateKeyJwk.d);
+      
+      // Create a 64-byte private key by concatenating seed (32 bytes) + public key (32 bytes)
+      // This matches the Ed25519 convention used by TweetNaCl and other libraries
       const privateKeyFull = new Uint8Array(64);
       privateKeyFull.set(seed, 0);
       privateKeyFull.set(publicKey, 32);

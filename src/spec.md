@@ -1,13 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Return a structured HTTP-response payload from `fetchSignals` and update frontend types/handling to match the new Candid shape.
+**Goal:** Fix Ed25519 keypair generation in the Connect Bot Wizard so it produces a valid keypair and keeps the existing wizard flow unchanged.
 
 **Planned changes:**
-- Update `backend/main.mo` public type `SignalFetchResult` so `#ok` returns `{ statusCode : Nat; body : Text; timestamp : Int }` and `#err` remains `BotError` (unchanged variants).
-- Update `backend/main.mo` `fetchSignals` success path to return `#ok({ statusCode = 200; body = response; timestamp = Time.now() })` without attempting to parse JSON into `Signal` records.
-- Preserve all existing `fetchSignals` error behavior and messages, and keep the successful-call heartbeat update (`BotProfile.lastHeartbeat = Time.now()`) as currently implemented.
-- Add an audit log entry on successful `fetchSignals` calls including `Signals fetched: ` plus the first 100 characters of the response body (or the full body if <= 100 chars).
-- Update frontend generated/backend interface types and `frontend/src/hooks/useFetchSignalsTest.ts` to handle the new structured success payload and update the success toast message to reference the structured result (e.g., status code and/or body length), in English.
+- Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` to replace `handleGenerateKeypair` with a real Ed25519 keypair generation flow that prefers TweetNaCl (`import nacl from 'tweetnacl'`), falls back to `@noble/ed25519` if needed, and finally to Web Crypto API Ed25519 if dependencies cannot be used.
+- Ensure the wizard stores the generated `publicKey` as a `Uint8Array(32)` for backend linking, and displays/stores the private key as a hex string derived from the generated secret/private key material (TweetNaCl `secretKey` preferred).
+- If TweetNaCl is not present, add `tweetnacl` as the minimal required frontend dependency so the import compiles and runs (no unrelated dependency changes).
 
-**User-visible outcome:** The frontend connectivity test can call `fetchSignals` and show a success toast based on the returned HTTP status/body info, while backend behavior and errors remain the same except that successful calls now return the raw HTTP response payload (with timestamp) and create a success audit entry.
+**User-visible outcome:** Clicking “Generate Bot Identity” reliably generates and shows a valid Ed25519 private key (hex) and links the matching public key through the existing wizard steps without any UI/flow changes.
