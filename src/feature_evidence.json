@@ -1,4 +1,26 @@
 {
   "kind": "feature_evidence_report",
-  "features": []
+  "features": [
+    {
+      "featureId": "feature-remove-the-support-related-phrases-community-support-priority-support-and-dedicated-support-so-they-no-longer-appear-anywhere-in-the-subscription-tab-ui-including-the-tier-features-list-rendering",
+      "featureTitle": "Remove the support-related phrases \"Community support\", \"Priority Support\", and \"Dedicated Support\" so they no longer appear anywhere in the Subscription tab UI (including the tier features list rendering).",
+      "files": [
+        "frontend/src/components/settings/SubscriptionPanel.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "http-outcalls@3.0.0",
+        "stripe@3.0.0"
+      ],
+      "testIds": [
+        "REQ-33"
+      ],
+      "confidence": "high"
+    }
+  ]
 }

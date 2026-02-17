@@ -2,30 +2,74 @@ import { useState, useEffect } from 'react';
 import { useGetCallerUserProfile } from '../../hooks/useCurrentUserProfile';
 import DashboardScreen from '../../screens/DashboardScreen';
 import SettingsScreen from '../../screens/SettingsScreen';
+import TradesScreen from '../../screens/TradesScreen';
+import AdminScreen from '../../screens/AdminScreen';
+import OverviewScreen from '../../screens/OverviewScreen';
 import PaymentSuccessScreen from '../../screens/PaymentSuccessScreen';
 import PaymentFailureScreen from '../../screens/PaymentFailureScreen';
 import DashboardHeader from '../dashboard/DashboardHeader';
 import { Heart } from 'lucide-react';
 
-type Screen = 'dashboard' | 'settings' | 'payment-success' | 'payment-failure';
+type Screen = 'dashboard' | 'trades' | 'admin' | 'overview' | 'settings' | 'payment-success' | 'payment-failure';
 
 export default function AppShell() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
   const { data: userProfile } = useGetCallerUserProfile();
 
-  // Check URL path on mount to handle payment redirects
+  // Initialize route from URL on mount
   useEffect(() => {
-    const path = window.location.pathname;
-    if (path === '/payment-success') {
-      setCurrentScreen('payment-success');
-    } else if (path === '/payment-failure') {
-      setCurrentScreen('payment-failure');
-    }
+    const updateRouteFromUrl = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash.slice(1); // Remove '#'
+
+      // Handle payment redirects from pathname
+      if (path === '/payment-success') {
+        setCurrentScreen('payment-success');
+        return;
+      }
+      if (path === '/payment-failure') {
+        setCurrentScreen('payment-failure');
+        return;
+      }
+
+      // Handle hash-based routing
+      if (hash) {
+        const validScreens: Screen[] = ['dashboard', 'trades', 'admin', 'overview', 'settings'];
+        if (validScreens.includes(hash as Screen)) {
+          setCurrentScreen(hash as Screen);
+          return;
+        }
+      }
+
+      // Default to dashboard
+      setCurrentScreen('dashboard');
+    };
+
+    updateRouteFromUrl();
+
+    // Listen for hash changes
+    const handleHashChange = () => {
+      updateRouteFromUrl();
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  const handleNavigate = (screen: Screen) => {
+    if (screen === 'payment-success' || screen === 'payment-failure') {
+      // Payment screens use pathname
+      window.history.pushState({}, '', `/${screen}`);
+    } else {
+      // Other screens use hash routing
+      window.location.hash = screen;
+    }
+    setCurrentScreen(screen);
+  };
+
   const handleNavigateHome = () => {
-    // Clear the URL path
     window.history.pushState({}, '', '/');
+    window.location.hash = 'dashboard';
     setCurrentScreen('dashboard');
   };
 
@@ -43,14 +87,17 @@ export default function AppShell() {
       {/* Glassmorphism Header */}
       <DashboardHeader
         currentScreen={currentScreen}
-        onNavigate={setCurrentScreen}
+        onNavigate={handleNavigate}
         userProfile={userProfile}
       />
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {currentScreen === 'dashboard' && <DashboardScreen />}
+        {currentScreen === 'trades' && <TradesScreen />}
+        {currentScreen === 'overview' && <OverviewScreen />}
         {currentScreen === 'settings' && <SettingsScreen />}
+        {currentScreen === 'admin' && <AdminScreen />}
       </main>
 
       {/* Footer */}

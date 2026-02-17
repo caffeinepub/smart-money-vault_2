@@ -1,14 +1,19 @@
 import LoginButton from '../auth/LoginButton';
-import { LayoutDashboard, Settings } from 'lucide-react';
+import { LayoutDashboard, Settings, TrendingUp, BarChart3, Shield } from 'lucide-react';
+import { useIsCallerAdmin } from '../../hooks/useAdmin';
 import type { UserProfile } from '../../backend';
 
+type Screen = 'dashboard' | 'trades' | 'admin' | 'overview' | 'settings' | 'payment-success' | 'payment-failure';
+
 interface DashboardHeaderProps {
-  currentScreen: 'dashboard' | 'settings';
-  onNavigate: (screen: 'dashboard' | 'settings') => void;
+  currentScreen: Screen;
+  onNavigate: (screen: Screen) => void;
   userProfile: UserProfile | null | undefined;
 }
 
 export default function DashboardHeader({ currentScreen, onNavigate, userProfile }: DashboardHeaderProps) {
+  const { data: isAdmin, isLoading: adminCheckLoading } = useIsCallerAdmin();
+
   return (
     <header className="border-b border-white/5 bg-[#121212]/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-6">
@@ -29,6 +34,28 @@ export default function DashboardHeader({ currentScreen, onNavigate, userProfile
               <span>Dashboard</span>
             </button>
             <button
+              onClick={() => onNavigate('trades')}
+              className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                currentScreen === 'trades'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/50 hover:bg-white/5 hover:text-white/70'
+              }`}
+            >
+              <TrendingUp className="h-4 w-4" />
+              <span>Trades</span>
+            </button>
+            <button
+              onClick={() => onNavigate('overview')}
+              className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                currentScreen === 'overview'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/50 hover:bg-white/5 hover:text-white/70'
+              }`}
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span>Overview</span>
+            </button>
+            <button
               onClick={() => onNavigate('settings')}
               className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 currentScreen === 'settings'
@@ -39,6 +66,19 @@ export default function DashboardHeader({ currentScreen, onNavigate, userProfile
               <Settings className="h-4 w-4" />
               <span>Settings</span>
             </button>
+            {!adminCheckLoading && isAdmin && (
+              <button
+                onClick={() => onNavigate('admin')}
+                className={`flex items-center space-x-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  currentScreen === 'admin'
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/50 hover:bg-white/5 hover:text-white/70'
+                }`}
+              >
+                <Shield className="h-4 w-4" />
+                <span>Admin</span>
+              </button>
+            )}
           </nav>
         </div>
         <div className="flex items-center space-x-4">

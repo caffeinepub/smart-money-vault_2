@@ -1,6 +1,23 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Smart Money Vault — Frontend plan (no changes for backend-only retry)",
-  "requirements": []
+  "title": "Subscription tab: remove support-related feature text",
+  "requirements": [
+    {
+      "id": "REQ-33",
+      "summary": "Ensure support-related feature phrases are not rendered anywhere in the Settings → Subscription UI (including tier features list).",
+      "acceptanceCriteria": [
+        "When viewing Settings → Subscription, none of the strings \"Community support\", \"Priority Support\", or \"Dedicated Support\" appear in the UI.",
+        "Subscription tier cards still render normally (features list shows all other entries unchanged), and subscribing flow remains unaffected.",
+        "A repository-wide search limited to the Subscription tab rendering path confirms these phrases are not rendered by Subscription UI anymore (e.g., filtered out before display)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/settings/SubscriptionPanel.tsx",
+          "operation": "modify",
+          "description": "Filter out the feature strings \"Community support\", \"Priority Support\", and \"Dedicated Support\" from the tier features list before rendering (e.g., via a small denylist + normalization/trim), so these phrases never appear in the Subscription tab UI while leaving all other features and the checkout flow unchanged."
+        }
+      ]
+    }
+  ]
 }

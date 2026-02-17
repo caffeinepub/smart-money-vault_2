@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 19,
-  "summary": "Expand backend fixes to include `check_uplink` improvements (stable `botIdIndex`, indexed lookup, non-empty signature + TODO for Ed25519 verification) and update `fetchSignals` in `backend/main.mo` to return structured HTTP outcall response data (statusCode/body/timestamp), add an audit entry with first 100 chars of the response, and update public types—without modifying other endpoints.",
+  "projectStateVersion": 23,
+  "summary": "Expand project scope to include a frontend navigation refactor: replace AppShell.tsx useState screen toggling with real (hash/state) routing across all existing screens, update DashboardHeader nav links (with admin-only gating via useIsCallerAdmin), and merge the duplicate Settings screens into a single tabbed SettingsScreen (Profile/Connect Bot/Subscription/Admin Tiers) while not modifying individual screen internals.",
   "architectural_notes": [
     "Stripe integration must not modify backend/stripe/stripe.mo; actor should store optional stable StripeConfiguration and call Stripe.createCheckoutSession/getSessionStatus using existing transform function.",
     "Expose Stripe-related types (ShoppingItem, StripeSessionStatus) as public types from the actor for frontend consumption.",
@@ -67,6 +67,54 @@
       "title": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` `handleGenerateKeypair` so it no longer uses TweetNaCl or Web Crypto Ed25519. Instead, generate the keypair using `@noble/ed25519` exactly as follows: `import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);`. Display the private key as a hex string (for BOT_PRIVATE_KEY) and keep the public key as a `Uint8Array` for sending to the backend. If `@noble/ed25519` is not available at runtime/build-time, fall back to generating a 32-byte random seed and produce a placeholder derived public key, including the exact comment: `// TODO: Replace with real Ed25519 derivation in production.` Do not change any other UI, steps, blur/copy behavior, or the existing `linkMutation` call flow.",
       "reqIds": [
         "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-refactor-frontend-src-components-layout-appshell-tsx-to-replace-the-current-usestate-screen-toggle-with-a-proper-route-system-hash-routing-or-simple-state-derived-from-window-location-supporting-these-routes-dashboard-default-trades-overview-settings-admin-payment-success-payment-failure",
+      "title": "Refactor `frontend/src/components/layout/AppShell.tsx` to replace the current `useState` screen toggle with a proper route system (hash routing or simple state derived from `window.location`), supporting these routes: `dashboard` (default), `trades`, `overview`, `settings`, `admin`, `payment-success`, `payment-failure`.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-src-components-dashboard-dashboardheader-tsx-navigation-to-include-links-for-dashboard-default-trades-overview-settings-and-admin-admin-only-admin-visibility-must-be-gated-by-useiscalleradmin-from-frontend-src-hooks-useadmin-ts",
+      "title": "Update `frontend/src/components/dashboard/DashboardHeader.tsx` navigation to include links for: Dashboard (default), Trades, Overview, Settings, and Admin (admin-only). Admin visibility must be gated by `useIsCallerAdmin` from `frontend/src/hooks/useAdmin.ts`.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-layout-appshell-tsx-render-the-correct-screen-component-based-on-the-current-route-using-these-mappings-dashboard-dashboardscreen-trades-tradesscreen-overview-overviewscreen-settings-merged-settingsscreen-admin-adminscreen-admin-only-payment-success-paymentsuccessscreen-payment-failure-paymentfailurescreen-import-all-referenced-screens-and-useiscalleradmin-for-admin-gating",
+      "title": "In `frontend/src/components/layout/AppShell.tsx`, render the correct screen component based on the current route, using these mappings: `dashboard` → `DashboardScreen`, `trades` → `TradesScreen`, `overview` → `OverviewScreen`, `settings` → merged `SettingsScreen`, `admin` → `AdminScreen` (admin-only), `payment-success` → `PaymentSuccessScreen`, `payment-failure` → `PaymentFailureScreen`. Import all referenced screens and `useIsCallerAdmin` for admin gating.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-merge-frontend-src-screens-settingsroutescreen-tsx-into-frontend-src-screens-settingsscreen-tsx-by-updating-settingsscreen-to-provide-4-tabs-profile-renders-profilesettingsform-connect-bot-renders-connectbotpanel-subscription-renders-subscriptionpanel-and-is-visible-to-all-users-and-admin-tiers-renders-admintiermanagementpanel-and-is-visible-only-for-admins-using-useiscalleradmin",
+      "title": "Merge `frontend/src/screens/SettingsRouteScreen.tsx` into `frontend/src/screens/SettingsScreen.tsx` by updating `SettingsScreen` to provide 4 tabs: \"Profile\" (renders `ProfileSettingsForm`), \"Connect Bot\" (renders `ConnectBotPanel`), \"Subscription\" (renders `SubscriptionPanel` and is visible to all users), and \"Admin Tiers\" (renders `AdminTierManagementPanel` and is visible only for admins using `useIsCallerAdmin`).",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-delete-frontend-src-screens-settingsroutescreen-tsx-after-its-content-is-merged-it-is-currently-an-empty-placeholder-ensure-imports-usages-are-removed-so-the-build-passes",
+      "title": "Delete `frontend/src/screens/SettingsRouteScreen.tsx` after its content is merged (it is currently an empty placeholder). Ensure imports/usages are removed so the build passes.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-the-support-related-phrases-community-support-priority-support-and-dedicated-support-so-they-no-longer-appear-anywhere-in-the-subscription-tab-ui-including-the-tier-features-list-rendering",
+      "title": "Remove the support-related phrases \"Community support\", \"Priority Support\", and \"Dedicated Support\" so they no longer appear anywhere in the Subscription tab UI (including the tier features list rendering).",
+      "reqIds": [
+        "REQ-33"
       ],
       "version": 1
     }
@@ -284,6 +332,18 @@
       "reqIds": [
         "REQ-27"
       ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-31",
+      "summary": "Frontend routing + Settings merge refactor:\n- Refactor `AppShell.tsx` to replace useState-based screen toggling with a proper route system (state variable or simple hash routing) supporting: 'dashboard' | 'trades' | 'admin' | 'overview' | 'settings' | 'payment-success' | 'payment-failure'.\n- Update `DashboardHeader` navigation to include links: Dashboard (default), Trades, Overview, Settings, and Admin (admin-only via `useIsCallerAdmin`).\n- Render screens by route: dashboard→DashboardScreen, trades→TradesScreen, overview→OverviewScreen, settings→merged SettingsScreen, admin→AdminScreen (admin-only), payment-success→PaymentSuccessScreen, payment-failure→PaymentFailureScreen.\n- Merge `SettingsScreen.tsx` + `SettingsRouteScreen.tsx` into one Settings screen with 4 tabs: Profile (ProfileSettingsForm), Connect Bot (ConnectBotPanel), Subscription (SubscriptionPanel, always visible), Admin Tiers (AdminTierManagementPanel, admin-only).\n- Import all screens and `useIsCallerAdmin` for admin checks.\n- Delete `SettingsRouteScreen.tsx` after merging.\n- Do not modify internals of DashboardScreen/TradesScreen/other screens; only AppShell routing + Settings tabs/composition.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-32",
+      "summary": "Remove support-related text strings from the Subscription UI/tab: delete the phrases \"Community support\", \"Priority Support\", and \"Dedicated Support\" so they no longer appear anywhere in Subscription.",
+      "reqIds": [],
       "status": "pending"
     }
   ],

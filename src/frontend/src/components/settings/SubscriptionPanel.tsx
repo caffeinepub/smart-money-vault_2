@@ -9,6 +9,22 @@ import { useToast } from '../common/ToastProvider';
 import StripeConfigModal from './StripeConfigModal';
 import type { ShoppingItem } from '../../backend';
 
+// Support-related feature strings to filter out
+const SUPPORT_FEATURES_DENYLIST = [
+  'Community support',
+  'Priority support',
+  'Dedicated support',
+];
+
+function filterSupportFeatures(features: string[]): string[] {
+  return features.filter((feature) => {
+    const normalized = feature.trim();
+    return !SUPPORT_FEATURES_DENYLIST.some(
+      (denied) => normalized.toLowerCase() === denied.toLowerCase()
+    );
+  });
+}
+
 export default function SubscriptionPanel() {
   const { data: tiers, isLoading } = useListTiers();
   const { data: isStripeConfigured, isLoading: stripeConfigLoading } = useIsStripeConfigured();
@@ -127,6 +143,9 @@ export default function SubscriptionPanel() {
           }
           const description = limits.join(', ');
 
+          // Filter out support-related features
+          const filteredFeatures = filterSupportFeatures(tier.features);
+
           const isProcessing = processingTierId === tier.id;
 
           return (
@@ -155,7 +174,7 @@ export default function SubscriptionPanel() {
               </div>
 
               <ul className="mb-6 space-y-3">
-                {tier.features.map((feature) => (
+                {filteredFeatures.map((feature) => (
                   <li key={feature} className="flex items-start space-x-2">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-profit" />
                     <span className="text-sm text-white/70">{feature}</span>
