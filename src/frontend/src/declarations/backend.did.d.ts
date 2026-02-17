@@ -65,15 +65,9 @@ export interface ShoppingItem {
   'priceInCents' : bigint,
   'productDescription' : string,
 }
-export interface Signal {
-  'direction' : { 'buy' : null } |
-    { 'sell' : null },
-  'signalId' : string,
-  'timestamp' : Time,
-  'quantity' : bigint,
-  'price' : number,
-}
-export type SignalFetchResult = { 'ok' : Array<Signal> } |
+export type SignalFetchResult = {
+    'ok' : { 'body' : string, 'timestamp' : bigint, 'statusCode' : bigint }
+  } |
   { 'err' : BotError };
 export type Status = { 'SUSPENDED' : null } |
   { 'ACTIVE' : null };

@@ -1,21 +1,71 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T00:11:41.091Z",
+  "generatedAt": "2026-02-17T00:59:35.065Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 0,
+    "total": 7,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-9",
-        "summary": "Update `backend/main.mo` `getHeartbeatData` so the `cycles` value no longer uses any unavailable cycles balance API: attempt to use `ExperimentalCycles.balance()` for the canister cycle balance; if `ExperimentalCycles.balance()` is not available in this Motoko version, set `cycles` to `0` and add the exact comment `// TODO: Replace with actual cycle balance API when available.`. Do not change any other logic, types, fields, access control, or behavior in `getHeartbeatData` beyond this `cycles` retrieval adjustment.",
+        "id": "REQ-13",
+        "summary": "Update the backend public type `SignalFetchResult` in `backend/main.mo` to return a structured HTTP response payload instead of `[Signal]`, changing it to: `#ok : { statusCode : Nat; body : Text; timestamp : Int } | #err : BotError` (keeping the existing `BotError` variants unchanged).",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
+      },
+      {
+        "id": "REQ-14",
+        "summary": "In `backend/main.mo`, update `fetchSignals` so that after a successful HTTP outcall (i.e., after `response = await OutCall.httpGetRequest(...)` completes without trapping), the function returns `#ok({ statusCode = 200; body = response; timestamp = Time.now() })` instead of `#ok([])`.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-15",
+        "summary": "Keep the existing `fetchSignals` error behavior in `backend/main.mo` unchanged: on authorization failure, missing bot profile, missing bot URL, invalid URL, or any existing error case, continue returning the same `#err` variants and messages as currently implemented.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-16",
+        "summary": "In `backend/main.mo`, ensure `fetchSignals` still updates the caller’s bot profile heartbeat timestamp exactly as it currently does (i.e., set `lastHeartbeat = Time.now()` in the stored `BotProfile`) on the successful outcall path.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-17",
+        "summary": "In `backend/main.mo`, add an audit log entry on the successful outcall path of `fetchSignals` whose details include the first 100 characters of the HTTP response body (or the full body if it is <= 100 characters), using the exact prefix format: `\"Signals fetched: \" # <snippet>`.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-18",
+        "summary": "Update the frontend connectivity-test hook `frontend/src/hooks/useFetchSignalsTest.ts` to handle the new `fetchSignals` success shape (`{ statusCode; body; timestamp }`) and update the success toast message to reflect the structured result (e.g., include status code and/or body length) rather than `signals.length`.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useFetchSignalsTest.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useFetchSignalsTest.ts"
+        ]
+      },
+      {
+        "id": "REQ-19",
+        "summary": "Regenerate or update the frontend’s backend interface type definitions (e.g., the generated declarations used by the actor) so TypeScript correctly reflects the updated `SignalFetchResult` Candid type and `actor.fetchSignals()` return type.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/backend.d.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/backend.d.ts"
+        ]
       }
     ]
   },
@@ -23,11 +73,14 @@
     "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useEquityCurve.ts",
+    "frontend/src/hooks/useFetchSignalsTest.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

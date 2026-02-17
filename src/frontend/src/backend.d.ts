@@ -7,13 +7,6 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface Signal {
-    direction: Variant_buy_sell;
-    signalId: string;
-    timestamp: Time;
-    quantity: bigint;
-    price: number;
-}
 export type Result_2 = {
     __kind__: "ok";
     ok: JwtToken;
@@ -74,7 +67,11 @@ export interface License {
 }
 export type SignalFetchResult = {
     __kind__: "ok";
-    ok: Array<Signal>;
+    ok: {
+        statusCode: bigint;
+        body: string;
+        timestamp: bigint;
+    };
 } | {
     __kind__: "err";
     err: BotError;
@@ -153,6 +150,10 @@ export interface SubscriptionTier {
     maxBots: bigint;
     priceInCents: bigint;
 }
+export interface JwtToken {
+    jwt: string;
+    accountId: AccountId;
+}
 export interface ShoppingItem {
     productName: string;
     currency: string;
@@ -174,10 +175,6 @@ export type Result = {
     __kind__: "err";
     err: Error_;
 };
-export interface JwtToken {
-    jwt: string;
-    accountId: AccountId;
-}
 export type BotError = {
     __kind__: "InvalidUrl";
     InvalidUrl: string;
@@ -208,6 +205,10 @@ export enum Status {
     SUSPENDED = "SUSPENDED",
     ACTIVE = "ACTIVE"
 }
+export enum TradeSide {
+    buy = "buy",
+    sell = "sell"
+}
 export enum UplinkStatus {
     EXECUTE = "EXECUTE",
     STANDBY = "STANDBY"
@@ -222,13 +223,9 @@ export enum Variant_Pro_Free_Whale {
     Free = "Free",
     Whale = "Whale"
 }
-export enum Variant_buy_sell {
-    buy = "buy",
-    sell = "sell"
-}
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    check_uplink(bot_id: string, _signature: Uint8Array): Promise<UplinkStatus>;
+    check_uplink(bot_id: string, signature: Uint8Array): Promise<UplinkStatus>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
     createOrUpdateLicense(accountId: AccountId, active: boolean): Promise<void>;
     create_tier(tier: SubscriptionTier): Promise<Result_4>;

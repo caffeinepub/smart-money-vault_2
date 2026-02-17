@@ -1,18 +1,20 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 7,
-  "summary": "Add a backend fix in backend/main.mo: update legacy getHeartbeatData to return real data from botProfiles/userProfiles/licenses and real canister cycle balance, and extend HeartbeatData with optional cyclesWarning while preserving legacy public methods and architecture constraints.",
+  "projectStateVersion": 11,
+  "summary": "Expand backend fixes to include `check_uplink` improvements (stable `botIdIndex`, indexed lookup, non-empty signature + TODO for Ed25519 verification) and update `fetchSignals` in `backend/main.mo` to return structured HTTP outcall response data (statusCode/body/timestamp), add an audit entry with first 100 chars of the response, and update public types—without modifying other endpoints.",
   "architectural_notes": [
     "Stripe integration must not modify backend/stripe/stripe.mo; actor should store optional stable StripeConfiguration and call Stripe.createCheckoutSession/getSessionStatus using existing transform function.",
     "Expose Stripe-related types (ShoppingItem, StripeSessionStatus) as public types from the actor for frontend consumption.",
     "Project context: \"Smart Money Vault\" (institutional trading command center on ICP) with single Motoko canister backend/main.mo + React frontend + off-chain Python trading bot.",
     "Constraints: preserve ALL legacy public methods listed in backend/main.mo header; all mutations must be update calls (never query); keep files <1000 lines (split into modules if needed); do not modify stable/tested modules unless explicitly told; do not modify frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui/*.",
     "Access control rules: use AccessControl.hasPermission for user checks and AccessControl.isAdmin for admin checks.",
-    "Cycle balance API constraint: Runtime.cyclesBalance() is not available in the current Motoko version; use ExperimentalCycles.balance() if available, otherwise set cycles to 0 and add comment `// TODO: Replace with actual cycle balance API when available.`"
+    "Cycle balance API constraint: Runtime.cyclesBalance() is not available in the current Motoko version; use ExperimentalCycles.balance() if available, otherwise set cycles to 0 and add comment `// TODO: Replace with actual cycle balance API when available.`",
+    "For `check_uplink` performance and correctness, maintain a stable `botIdIndex` (bot_id → owner Principal) updated in `saveCallerUserProfile`, and use it instead of scanning all `userProfiles`. Enforce non-empty signature with a trap and include a Phase 2 TODO for full Ed25519 verification."
   ],
   "known_issues": [
     "Repeated build attempts for the getHeartbeatData change failed with the assistant reporting it 'couldn't implement that request'; root cause not identified in conversation.",
-    "Motoko version lacks Runtime.cyclesBalance(); heartbeat cycles must use ExperimentalCycles.balance() or fall back to 0 with a TODO comment."
+    "Motoko version lacks Runtime.cyclesBalance(); heartbeat cycles must use ExperimentalCycles.balance() or fall back to 0 with a TODO comment.",
+    "Attempt to implement the `fetchSignals` structured HTTP response return and type change failed (assistant reported inability to implement); retry requested with smaller substeps."
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -21,6 +23,22 @@
       "title": "Update the dashboard heartbeat UI to tolerate and display the new optional `cyclesWarning` field returned by the backend heartbeat API.",
       "reqIds": [
         "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-connectivity-test-hook-frontend-src-hooks-usefetchsignalstest-ts-to-handle-the-new-fetchsignals-success-shape-statuscode-body-timestamp-and-update-the-success-toast-message-to-reflect-the-structured-result-e-g-include-status-code-and-or-body-length-rather-than-signals-length",
+      "title": "Update the frontend connectivity-test hook `frontend/src/hooks/useFetchSignalsTest.ts` to handle the new `fetchSignals` success shape (`{ statusCode; body; timestamp }`) and update the success toast message to reflect the structured result (e.g., include status code and/or body length) rather than `signals.length`.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-regenerate-or-update-the-frontend-s-backend-interface-type-definitions-e-g-the-generated-declarations-used-by-the-actor-so-typescript-correctly-reflects-the-updated-signalfetchresult-candid-type-and-actor-fetchsignals-return-type",
+      "title": "Regenerate or update the frontend’s backend interface type definitions (e.g., the generated declarations used by the actor) so TypeScript correctly reflects the updated `SignalFetchResult` Candid type and `actor.fetchSignals()` return type.",
+      "reqIds": [
+        "REQ-19"
       ],
       "version": 1
     }
@@ -99,6 +117,82 @@
       "summary": "Update `backend/main.mo` `getHeartbeatData` so the `cycles` value no longer uses any unavailable cycles balance API: attempt to use `ExperimentalCycles.balance()` for the canister cycle balance; if `ExperimentalCycles.balance()` is not available in this Motoko version, set `cycles` to `0` and add the exact comment `// TODO: Replace with actual cycle balance API when available.`. Do not change any other logic, types, fields, access control, or behavior in `getHeartbeatData` beyond this `cycles` retrieval adjustment.",
       "reqIds": [
         "REQ-9"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Implement `check_uplink` fixes in `backend/main.mo`:\n- Add stable `botIdIndex : Map<Text, Principal>` mapping `bot_id` to owner Principal.\n- Update `saveCallerUserProfile` to maintain `botIdIndex` after storing the profile: if new `bot_id` exists, remove old mapping when `bot_id` changed, then add `newBotId -> caller`.\n- Replace `check_uplink` to use `botIdIndex.get(bot_id)` (trap with `\"Unknown bot ID: no user registered with this bot_id\"` if null), then fetch `BotProfile` (trap `\"No bot profile found for this bot ID\"` if null), require `publicKey` (trap `\"Bot public key not registered. Complete the Connect Bot wizard first.\"` if null), validate `signature.size() > 0` else trap `\"Missing signature: signature blob cannot be empty. The Python bot must sign requests with its private key.\"`, add TODO `// TODO Phase 2: Implement full Ed25519 signature verification`, and return `#EXECUTE` if `uplinkStatus` else `#STANDBY`.\n- Do not modify any other endpoints.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "In `backend/main.mo`, add a new stable map `botIdIndex : Map<Text, Principal>` that maps `bot_id` (Text) to the owning user Principal.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "In `backend/main.mo` `saveCallerUserProfile`, after storing the incoming profile, update `botIdIndex` when `profile.bot_id` is non-null: (1) if a previous profile existed for the caller and had a different `bot_id`, remove the old `bot_id` entry from `botIdIndex`; (2) add/update the mapping `new bot_id -> caller` in `botIdIndex`.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Replace the `check_uplink` implementation in `backend/main.mo` to: (1) resolve the owner Principal via `botIdIndex.get(bot_id)`; if null, `Runtime.trap(\"Unknown bot ID: no user registered with this bot_id\")`; (2) fetch the owner’s `BotProfile`; if null, `Runtime.trap(\"No bot profile found for this bot ID\")`; (3) require `publicKey` exists; if null, `Runtime.trap(\"Bot public key not registered. Complete the Connect Bot wizard first.\")`; (4) validate `signature` is non-empty; if `signature.size() == 0`, `Runtime.trap(\"Missing signature: signature blob cannot be empty. The Python bot must sign requests with its private key.\")`; (5) add the comment `// TODO Phase 2: Implement full Ed25519 signature verification`; (6) return `#EXECUTE` if `uplinkStatus` is true, else `#STANDBY`.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Fix `fetchSignals` in `backend/main.mo` to return the HTTP response body instead of `#ok([])`: change `SignalFetchResult` to `#ok : { statusCode : Nat; body : Text; timestamp : Int } | #err : BotError`. On successful outcall (no trap), return `#ok({ statusCode = 200; body = response; timestamp = Time.now() })` while still updating `lastHeartbeat` as currently implemented; keep existing `#err` returns on errors. Add an audit entry: `\"Signals fetched: \" # (if response.size() > 100 then first 100 chars else full response)`. Update public type definitions so frontend can consume the new result shape. Do not modify any other endpoints.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Update the backend public type `SignalFetchResult` in `backend/main.mo` to return a structured HTTP response payload instead of `[Signal]`, changing it to: `#ok : { statusCode : Nat; body : Text; timestamp : Int } | #err : BotError` (keeping the existing `BotError` variants unchanged).",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "In `backend/main.mo`, update `fetchSignals` so that after a successful HTTP outcall (i.e., after `response = await OutCall.httpGetRequest(...)` completes without trapping), the function returns `#ok({ statusCode = 200; body = response; timestamp = Time.now() })` instead of `#ok([])`.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "Keep the existing `fetchSignals` error behavior in `backend/main.mo` unchanged: on authorization failure, missing bot profile, missing bot URL, invalid URL, or any existing error case, continue returning the same `#err` variants and messages as currently implemented.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "In `backend/main.mo`, ensure `fetchSignals` still updates the caller’s bot profile heartbeat timestamp exactly as it currently does (i.e., set `lastHeartbeat = Time.now()` in the stored `BotProfile`) on the successful outcall path.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "In `backend/main.mo`, add an audit log entry on the successful outcall path of `fetchSignals` whose details include the first 100 characters of the HTTP response body (or the full body if it is <= 100 characters), using the exact prefix format: `\"Signals fetched: \" # <snippet>`.",
+      "reqIds": [
+        "REQ-17"
       ],
       "status": "pending"
     }

@@ -1,38 +1,87 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T00:11:41.088Z",
-  "summary": "Cannot verify REQ-9 implementation because the diff for `backend/main.mo` is truncated before `getHeartbeatData`, and there is no visible evidence of the required `ExperimentalCycles.balance()` usage / fallback comment. Additionally, `project_state.json` introduces statements about broader heartbeat “real data” lookups and adding a `cyclesWarning` field/UI changes, which are explicitly out of scope for this BuildRequest.",
+  "generatedAt": "2026-02-17T00:59:35.061Z",
+  "summary": "Frontend hook `useFetchSignalsTest` was updated to handle a structured `fetchSignals` success payload and to show an English toast referencing status code/body length. However, the diff summary does not provide confirmable evidence that the backend `SignalFetchResult` type and `fetchSignals` implementation were updated as specified, nor that regenerated frontend actor/declaration types were updated. Additionally, unrelated changes appear in other frontend hooks/metadata.",
   "missing_requirements": [
     {
-      "id": "REQ-9",
-      "requirement": "Update `backend/main.mo` `getHeartbeatData` so `cycles` no longer uses an unavailable cycles balance API; use `ExperimentalCycles.balance()` if available, otherwise set `cycles` to `0` and add the exact comment `// TODO: Replace with actual cycle balance API when available.`; do not change any other `getHeartbeatData` logic/shape/access control.",
-      "reason": "The provided `backend/main.mo` diff is truncated and does not include `getHeartbeatData` or any visible change to `cycles` retrieval logic (no `ExperimentalCycles` import/usage or the required TODO comment is shown). Therefore there is insufficient evidence that REQ-9 was implemented.",
+      "id": "REQ-13",
+      "requirement": "Update backend public type `SignalFetchResult` in `backend/main.mo` to `#ok : { statusCode : Nat; body : Text; timestamp : Int } | #err : BotError` and ensure Candid reflects it.",
+      "reason": "`backend/main.mo` is truncated and the diff snippet does not show any `SignalFetchResult` type definition changes or Candid/type exposure changes.",
       "evidence": [
-        "backend/main.mo (truncated; does not show getHeartbeatData or cycles logic)"
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-14",
+      "requirement": "Update `fetchSignals` success return to `#ok({ statusCode = 200; body = response; timestamp = Time.now() })` and do not parse JSON into `Signal` records.",
+      "reason": "The diff summary does not include the `fetchSignals` function body or its return statement; cannot confirm the new structured return or that no JSON parsing occurs.",
+      "evidence": [
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-15",
+      "requirement": "Keep existing `fetchSignals` error behavior unchanged (same `#err` variants/messages) and avoid changing other public methods beyond `fetchSignals` and necessary public types.",
+      "reason": "The diff summary does not show the `fetchSignals` error paths, and `backend/main.mo` is truncated such that it is not possible to verify errors/messages are unchanged or that only the allowed backend surface changed.",
+      "evidence": [
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-16",
+      "requirement": "Ensure `fetchSignals` still updates caller’s `BotProfile.lastHeartbeat = Time.now()` on the successful outcall path.",
+      "reason": "No visible evidence in the truncated `backend/main.mo` snippet showing the successful `fetchSignals` path or the heartbeat update.",
+      "evidence": [
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "requirement": "Add an audit log entry on `fetchSignals` success with details beginning with `\"Signals fetched: \"` plus a 100-char snippet of the response body.",
+      "reason": "No visible evidence in the truncated `backend/main.mo` snippet showing audit logging behavior or the required prefix/snippet logic.",
+      "evidence": [
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "requirement": "Regenerate/update frontend backend interface type definitions so TS reflects updated `SignalFetchResult` and `actor.fetchSignals()` type.",
+      "reason": "The diff summary does not show any generated declaration/actor type file changes (e.g., `frontend/src/backend` or `declarations/...`) that would update TypeScript types; only hook logic was updated.",
+      "evidence": [
+        "frontend/src/hooks/useFetchSignalsTest.ts"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Broader heartbeat changes: making `getHeartbeatData` return “real data” from botProfiles/userProfiles/licenses and extending HeartbeatData with optional `cyclesWarning` (and related UI tolerance).",
-      "reason": "The BuildRequest explicitly states these are non-goals (no broader “real data” heartbeat lookup; no frontend/UI changes; no other `getHeartbeatData` logic/shape changes beyond `cycles` retrieval). The diff summary text in `project_state.json` describes these additional changes as if they were part of the work.",
+      "description": "Added/modified an equity curve hook (`useGetEquityCurve`) unrelated to `fetchSignals` connectivity test changes.",
+      "reason": "Not requested by any requirement; BuildRequest scope is limited to `fetchSignals`, necessary public types, and the connectivity-test hook/types.",
       "evidence": [
-        "project_state.json (summary mentions: \"update legacy getHeartbeatData to return real data from botProfiles/userProfiles/licenses ... extend HeartbeatData with optional cyclesWarning ...\")",
-        "project_state.json (existing_features includes UI update for cyclesWarning tied to REQ-8)"
+        "frontend/src/hooks/useEquityCurve.ts"
       ]
     },
     {
-      "description": "Stripe-related wiring work items included in project state.",
-      "reason": "The BuildRequest explicitly says not to modify or wire Stripe-related APIs as part of this change. While the diff does not show actual Stripe API wiring code, `project_state.json` includes new feature requests describing Stripe wiring work, which is outside this change request.",
+      "description": "Project metadata updated to mention `check_uplink` improvements in addition to `fetchSignals` changes.",
+      "reason": "BuildRequest explicitly constrained changes to `fetchSignals` and necessary public type definitions; mentioning/including other endpoint improvements is out of scope (even if only reflected in metadata).",
       "evidence": [
-        "project_state.json (new_feature_requests AR-1..AR-4 describe Stripe wiring/config endpoints)"
+        "project_state.json (truncated)"
+      ]
+    },
+    {
+      "description": "Updated `frontend-file-summaries.txt` content unrelated to the specified `fetchSignals`/types/connectivity-test changes.",
+      "reason": "Not requested; appears to be auxiliary documentation/metadata changes beyond the specified frontend hook/types updates.",
+      "evidence": [
+        "frontend-file-summaries.txt (truncated)"
       ]
     }
   ],
   "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/hooks/useEquityCurve.ts",
+    "frontend/src/hooks/useFetchSignalsTest.ts",
     "project_state.json"
   ]
 }

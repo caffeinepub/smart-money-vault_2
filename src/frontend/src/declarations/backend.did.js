@@ -45,22 +45,19 @@ export const Error = IDL.Variant({
   'ReplayDetected' : IDL.Null,
 });
 export const Result_4 = IDL.Variant({ 'ok' : SubscriptionTier, 'err' : Error });
-export const Time = IDL.Int;
-export const Signal = IDL.Record({
-  'direction' : IDL.Variant({ 'buy' : IDL.Null, 'sell' : IDL.Null }),
-  'signalId' : IDL.Text,
-  'timestamp' : Time,
-  'quantity' : IDL.Nat,
-  'price' : IDL.Float64,
-});
 export const BotError = IDL.Variant({
   'InvalidUrl' : IDL.Text,
   'FetchFailed' : IDL.Text,
 });
 export const SignalFetchResult = IDL.Variant({
-  'ok' : IDL.Vec(Signal),
+  'ok' : IDL.Record({
+    'body' : IDL.Text,
+    'timestamp' : IDL.Int,
+    'statusCode' : IDL.Nat,
+  }),
   'err' : BotError,
 });
+export const Time = IDL.Int;
 export const License = IDL.Record({
   'active' : IDL.Bool,
   'createdAt' : Time,
@@ -286,22 +283,19 @@ export const idlFactory = ({ IDL }) => {
     'ReplayDetected' : IDL.Null,
   });
   const Result_4 = IDL.Variant({ 'ok' : SubscriptionTier, 'err' : Error });
-  const Time = IDL.Int;
-  const Signal = IDL.Record({
-    'direction' : IDL.Variant({ 'buy' : IDL.Null, 'sell' : IDL.Null }),
-    'signalId' : IDL.Text,
-    'timestamp' : Time,
-    'quantity' : IDL.Nat,
-    'price' : IDL.Float64,
-  });
   const BotError = IDL.Variant({
     'InvalidUrl' : IDL.Text,
     'FetchFailed' : IDL.Text,
   });
   const SignalFetchResult = IDL.Variant({
-    'ok' : IDL.Vec(Signal),
+    'ok' : IDL.Record({
+      'body' : IDL.Text,
+      'timestamp' : IDL.Int,
+      'statusCode' : IDL.Nat,
+    }),
     'err' : BotError,
   });
+  const Time = IDL.Int;
   const License = IDL.Record({
     'active' : IDL.Bool,
     'createdAt' : Time,

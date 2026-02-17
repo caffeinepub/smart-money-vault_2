@@ -1,40 +1,139 @@
 {
   "kind": "build_request",
-  "title": "Fix heartbeat cycles balance API usage",
-  "projectName": "Heartbeat Balance Fix",
+  "title": "Return structured HTTP response from fetchSignals and update public types",
+  "projectName": "Smart Money Vault",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-9",
-      "text": "Update `backend/main.mo` `getHeartbeatData` so the `cycles` value no longer uses any unavailable cycles balance API: attempt to use `ExperimentalCycles.balance()` for the canister cycle balance; if `ExperimentalCycles.balance()` is not available in this Motoko version, set `cycles` to `0` and add the exact comment `// TODO: Replace with actual cycle balance API when available.`. Do not change any other logic, types, fields, access control, or behavior in `getHeartbeatData` beyond this `cycles` retrieval adjustment.",
+      "id": "REQ-13",
+      "text": "Update the backend public type `SignalFetchResult` in `backend/main.mo` to return a structured HTTP response payload instead of `[Signal]`, changing it to: `#ok : { statusCode : Nat; body : Text; timestamp : Int } | #err : BotError` (keeping the existing `BotError` variants unchanged).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages/user-2",
-          "recent-messages/user-3"
+          "msg-1"
         ],
         "quotes": [
-          "Runtime.cyclesBalance is not available in this Motoko version.\nTry ExperimentalCycles.balance() instead. If that is also not\navailable, set cycles to 0 and add the comment:\n// TODO: Replace with actual cycle balance API when available.\nDo not change anything else.",
-          "Build now"
+          "Change SignalFetchResult to:\n  #ok : { statusCode: Nat; body: Text; timestamp: Int }\n  #err : BotError"
         ]
       },
       "acceptanceCriteria": [
-        "`backend/main.mo` compiles in the target environment without referencing `Runtime.cyclesBalance`.",
-        "`getHeartbeatData` continues to return the same `HeartbeatData` shape and keeps all existing fields/logic unchanged except for how `cycles` is obtained.",
-        "If `ExperimentalCycles.balance()` can be used in this Motoko version, `cycles` is set from it; otherwise `cycles` is set to `0` and the function includes the exact comment `// TODO: Replace with actual cycle balance API when available.` near the fallback.",
-        "No other public methods, types, or access control checks in `backend/main.mo` are modified as part of this change."
+        "`backend/main.mo` defines `public type SignalFetchResult` with `#ok` carrying a record `{ statusCode : Nat; body : Text; timestamp : Int }` and `#err : BotError`.",
+        "The canister interface (Candid) reflects the new `SignalFetchResult` shape so the frontend can compile against it."
+      ]
+    },
+    {
+      "id": "REQ-14",
+      "text": "In `backend/main.mo`, update `fetchSignals` so that after a successful HTTP outcall (i.e., after `response = await OutCall.httpGetRequest(...)` completes without trapping), the function returns `#ok({ statusCode = 200; body = response; timestamp = Time.now() })` instead of `#ok([])`.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Currently line 663 returns #ok([]) after the outcall succeeds.\nThe variable `response` contains the HTTP response body as Text.",
+          "On success (the outcall completed without trapping):\n  Return #ok({ statusCode = 200, body = response,\n    timestamp = Time.now() })."
+        ]
+      },
+      "acceptanceCriteria": [
+        "On the success path (valid https URL, outcall completes), `fetchSignals` returns `#ok` with `statusCode = 200`, `body = response`, and `timestamp = Time.now()`.",
+        "`fetchSignals` does not attempt to parse JSON into `Signal` records."
+      ]
+    },
+    {
+      "id": "REQ-15",
+      "text": "Keep the existing `fetchSignals` error behavior in `backend/main.mo` unchanged: on authorization failure, missing bot profile, missing bot URL, invalid URL, or any existing error case, continue returning the same `#err` variants and messages as currently implemented.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "On any error, keep the existing #err returns.",
+          "Do not modify any other endpoints."
+        ]
+      },
+      "acceptanceCriteria": [
+        "All existing `#err(...)` return paths in `fetchSignals` remain present and return the same `BotError` variants/messages as before.",
+        "No other public methods besides `fetchSignals` and the necessary public type definitions are changed."
+      ]
+    },
+    {
+      "id": "REQ-16",
+      "text": "In `backend/main.mo`, ensure `fetchSignals` still updates the caller’s bot profile heartbeat timestamp exactly as it currently does (i.e., set `lastHeartbeat = Time.now()` in the stored `BotProfile`) on the successful outcall path.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Still update lastHeartbeat as currently implemented."
+        ]
+      },
+      "acceptanceCriteria": [
+        "After a successful `fetchSignals` call, the stored `BotProfile.lastHeartbeat` for the caller is updated to a new `Time.now()` value as before."
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "text": "In `backend/main.mo`, add an audit log entry on the successful outcall path of `fetchSignals` whose details include the first 100 characters of the HTTP response body (or the full body if it is <= 100 characters), using the exact prefix format: `\"Signals fetched: \" # <snippet>`.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Add an audit entry that includes the first 100 characters of the\nresponse body: \"Signals fetched: \" # (if response.size() > 100\nthen take first 100 chars else full response)."
+        ]
+      },
+      "acceptanceCriteria": [
+        "On success, an audit entry is added with action `FETCH_SIGNALS` (or the existing action used for fetchSignals) and details that begin with `Signals fetched: ` followed by a snippet of `response` capped at 100 characters.",
+        "If `response.size() <= 100`, the full `response` text is included after the prefix."
+      ]
+    },
+    {
+      "id": "REQ-18",
+      "text": "Update the frontend connectivity-test hook `frontend/src/hooks/useFetchSignalsTest.ts` to handle the new `fetchSignals` success shape (`{ statusCode; body; timestamp }`) and update the success toast message to reflect the structured result (e.g., include status code and/or body length) rather than `signals.length`.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Update the public type definitions so the frontend can consume\nthe new result shape."
+        ]
+      },
+      "acceptanceCriteria": [
+        "`useFetchSignalsTest` compiles with the updated `fetchSignals` return type and no longer assumes `result.ok` is an array.",
+        "On success, the toast message is in English and references the structured payload (e.g., `statusCode` and/or `body`), without referencing a signals array length."
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "text": "Regenerate or update the frontend’s backend interface type definitions (e.g., the generated declarations used by the actor) so TypeScript correctly reflects the updated `SignalFetchResult` Candid type and `actor.fetchSignals()` return type.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Update the public type definitions so the frontend can consume\nthe new result shape."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Frontend TypeScript builds without type errors related to `SignalFetchResult` or `actor.fetchSignals()`.",
+        "The frontend’s declared `SignalFetchResult` type matches the backend’s new `#ok` record shape (`statusCode`, `body`, `timestamp`) and the existing `#err : BotError` union."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in `backend/main.mo`.",
-    "Do not change anything in `getHeartbeatData` other than the `cycles` retrieval logic as specified.",
-    "Use English for any user-facing text (not applicable to this change)."
+    "Do not modify any other endpoints besides `fetchSignals` and the necessary public type definitions required to expose the new `SignalFetchResult` shape.",
+    "Do not parse arbitrary JSON into `Signal` records in Motoko for this MVP; return the raw HTTP response body as `Text`.",
+    "Use English for any user-facing text."
   ],
   "nonGoals": [
-    "Do not implement the broader 'real data' heartbeat lookup (botProfiles/userProfiles/licenses) in this change.",
-    "Do not make any frontend/UI changes.",
-    "Do not modify or wire Stripe-related APIs as part of this change."
+    "Implementing JSON parsing of the HTTP response into `[Signal]` on the backend.",
+    "Changing the HTTP outcall mechanism (`OutCall.httpGetRequest`) or the existing `transform` function behavior.",
+    "Adding new frontend screens or UI panels beyond updating existing connectivity test behavior."
   ],
   "imageRequirements": {
     "required": [],

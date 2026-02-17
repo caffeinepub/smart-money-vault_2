@@ -1,6 +1,6 @@
 import { useGetCallerUserProfile } from './useCurrentUserProfile';
 import { useGetTradesPaginated } from './useTrades';
-import { Variant_buy_sell } from '../backend';
+import { TradeSide } from '../backend';
 
 interface EquityPoint {
   time: string;
@@ -26,7 +26,7 @@ export function useGetEquityCurve() {
     
     trades.forEach((trade) => {
       if (trade.exitPrice && trade.exitTimestamp) {
-        const pnl = trade.side === Variant_buy_sell.buy
+        const pnl = trade.side === TradeSide.buy
           ? (trade.exitPrice - trade.entryPrice) * trade.size
           : (trade.entryPrice - trade.exitPrice) * trade.size;
         

@@ -24,9 +24,11 @@ export function useFetchSignalsTest() {
       
       return result.ok;
     },
-    onSuccess: (signals) => {
-      showToast('success', `Connectivity test passed. Received ${signals.length} signals.`);
-      return signals;
+    onSuccess: (payload) => {
+      const bodyLength = payload.body.length;
+      const statusCode = payload.statusCode;
+      showToast('success', `Connectivity test passed. Status ${statusCode}, received ${bodyLength} characters.`);
+      return payload;
     },
     onError: (error: unknown) => {
       const message = normalizeActorError(error);

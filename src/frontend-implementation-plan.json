@@ -1,6 +1,37 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix heartbeat cycles balance API usage (frontend-only plan)",
-  "requirements": []
+  "title": "Update fetchSignals frontend types and connectivity test for structured result",
+  "requirements": [
+    {
+      "id": "REQ-18",
+      "summary": "Update useFetchSignalsTest to handle structured fetchSignals success payload and update success toast messaging",
+      "acceptanceCriteria": [
+        "`useFetchSignalsTest` compiles with the updated `fetchSignals` return type and no longer assumes `result.ok` is an array.",
+        "On success, the toast message is in English and references the structured payload (e.g., `statusCode` and/or `body`), without referencing a signals array length."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useFetchSignalsTest.ts",
+          "operation": "modify",
+          "description": "Update the mutation success typing/handling to treat `result.ok` as a structured payload `{ statusCode; body; timestamp }` and adjust the success toast to reference e.g. `statusCode` and `body` length (English text only), removing any `signals.length` assumptions."
+        }
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "summary": "Update generated frontend backend interface type definitions to reflect the new SignalFetchResult ok record shape",
+      "acceptanceCriteria": [
+        "Frontend TypeScript builds without type errors related to `SignalFetchResult` or `actor.fetchSignals()`.",
+        "The frontend’s declared `SignalFetchResult` type matches the backend’s new `#ok` record shape (`statusCode`, `body`, `timestamp`) and the existing `#err : BotError` union."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/backend.d.ts",
+          "operation": "modify",
+          "description": "Regenerate or update the declared backend actor/types so `SignalFetchResult` is a discriminated union whose `ok` payload is a record containing `statusCode`, `body`, and `timestamp`, and `actor.fetchSignals()` returns that updated type."
+        }
+      ]
+    }
+  ]
 }

@@ -13,10 +13,13 @@ import AccessControl "authorization/access-control";
 import Stripe "stripe/stripe";
 import Nat "mo:core/Nat";
 import Float "mo:core/Float";
+import Char "mo:core/Char";
 
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
+
+  let signalFetchResults = Map.empty<Principal, SignalFetchResult>();
 
   public type UserProfile = {
     name : Text;
@@ -29,6 +32,7 @@ actor {
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let botIdIndex = Map.empty<Text, Principal>();
 
   public type StrategicVault = {
     strategies : [StrategyBundle];
@@ -142,7 +146,28 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
+
     userProfiles.add(caller, profile);
+
+    switch (profile.bot_id) {
+      case (?botId) {
+        switch (userProfiles.get(caller)) {
+          case (?existingProfile) {
+            switch (existingProfile.bot_id) {
+              case (?oldBotId) {
+                if (oldBotId != botId) {
+                  botIdIndex.remove(oldBotId);
+                };
+              };
+              case (null) {};
+            };
+          };
+          case (null) {};
+        };
+        botIdIndex.add(botId, caller);
+      };
+      case (null) {};
+    };
   };
 
   public shared ({ caller }) func update_profile(profile : UserProfile) : async () {
@@ -150,6 +175,26 @@ actor {
       Runtime.trap("Unauthorized: Only users can update profiles");
     };
     userProfiles.add(caller, profile);
+
+    switch (profile.bot_id) {
+      case (?botId) {
+        switch (userProfiles.get(caller)) {
+          case (?existingProfile) {
+            switch (existingProfile.bot_id) {
+              case (?oldBotId) {
+                if (oldBotId != botId) {
+                  botIdIndex.remove(oldBotId);
+                };
+              };
+              case (null) {};
+            };
+          };
+          case (null) {};
+        };
+        botIdIndex.add(botId, caller);
+      };
+      case (null) {};
+    };
   };
 
   public shared ({ caller }) func createOrUpdateLicense(accountId : AccountId, active : Bool) : async () {
@@ -459,7 +504,7 @@ actor {
   };
 
   public type SignalFetchResult = {
-    #ok : [Signal];
+    #ok : { statusCode : Nat; body : Text; timestamp : Int };
     #err : BotError;
   };
 
@@ -586,22 +631,12 @@ actor {
     addAuditEntry(caller, "TOGGLE_UPLINK", "Uplink status changed to: " # statusText);
   };
 
-  public func check_uplink(bot_id : Text, _signature : Blob) : async UplinkStatus {
-    var foundPrincipal : ?Principal = null;
-    for ((principal, profile) in userProfiles.entries()) {
-      switch (profile.bot_id) {
-        case (?id) {
-          if (id == bot_id) {
-            foundPrincipal := ?principal;
-          };
-        };
-        case (null) {};
+  public func check_uplink(bot_id : Text, signature : Blob) : async UplinkStatus {
+    let userPrincipal = switch (botIdIndex.get(bot_id)) {
+      case (?principal) { principal };
+      case (null) {
+        Runtime.trap("Unknown bot ID: no user registered with this bot_id");
       };
-    };
-
-    let userPrincipal = switch (foundPrincipal) {
-      case (?p) { p };
-      case (null) { Runtime.trap("Unknown bot ID") };
     };
 
     let botProfile = switch (botProfiles.get(userPrincipal)) {
@@ -609,10 +644,18 @@ actor {
       case (null) { Runtime.trap("No bot profile found for this bot ID") };
     };
 
-    let _publicKey = switch (botProfile.publicKey) {
-      case (?key) { key };
-      case (null) { Runtime.trap("Bot public key not registered") };
+    switch (botProfile.publicKey) {
+      case (null) {
+        Runtime.trap("Bot public key not registered. Complete the Connect Bot wizard first.");
+      };
+      case (?_) {};
     };
+
+    if (signature.size() == 0) {
+      Runtime.trap("Missing signature: signature blob cannot be empty. The Python bot must sign requests with its private key.");
+    };
+
+    // TODO Phase 2: Implement full Ed25519 signature verification
 
     if (botProfile.uplinkStatus) {
       #EXECUTE;
@@ -648,9 +691,17 @@ actor {
               uplinkStatus = profile.uplinkStatus;
             };
             botProfiles.add(caller, updatedProfile);
-            addAuditEntry(caller, "FETCH_SIGNALS", "Signals fetched successfully from bot URL");
 
-            #ok([]);
+            let bodyChars = response.toArray().sliceToArray(0, 100);
+            let bodySnippet = Text.fromArray(bodyChars);
+
+            addAuditEntry(caller, "FETCH_SIGNALS", "Signals fetched: " # bodySnippet);
+
+            #ok({
+              statusCode = 200;
+              body = response;
+              timestamp = Time.now();
+            });
           };
           case (null) { #err(#FetchFailed("No bot URL configured")) };
         };
@@ -740,7 +791,7 @@ actor {
               "Real-time trading",
               "Live market data",
               "Advanced analytics",
-              "Priority support",
+              "Priority support"
             ];
             active = true;
           },
