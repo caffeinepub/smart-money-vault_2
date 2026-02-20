@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CheckCircle2, Loader2, CreditCard, Crown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle2, CreditCard, Crown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useListTiers } from '../../hooks/useTiers';
 import { useIsStripeConfigured, useCreateCheckoutSession } from '../../hooks/useStripe';
@@ -10,9 +10,15 @@ import { Button } from '../ui/button';
 import { useToast } from '../common/ToastProvider';
 import StripeConfigModal from './StripeConfigModal';
 import { Variant_Pro_Free_Whale } from '../../backend';
+import { useAnalytics } from '../../hooks/useAnalytics';
+import { useStoreAnalyticsEvent } from '../../hooks/useBackendAnalytics';
+import { EventType } from '../../backend';
+import { CardSkeleton } from '../common/LoadingSkeletons';
+import { StateMessage } from '../common/StateMessage';
+import { useOnboardingTour } from '../tour/OnboardingTourProvider';
 import type { ShoppingItem, SubscriptionTier } from '../../backend';
+import type { TourStep } from '../tour/types';
 
-// Support-related feature strings to filter out
 const SUPPORT_FEATURES_DENYLIST = [
   'Community support',
   'Priority support',
@@ -28,7 +34,6 @@ function filterSupportFeatures(features: string[]): string[] {
   });
 }
 
-// Fallback tiers if backend returns empty or errors
 const FALLBACK_TIERS: SubscriptionTier[] = [
   {
     id: 'free',
@@ -74,6 +79,17 @@ const FALLBACK_TIERS: SubscriptionTier[] = [
   },
 ];
 
+const TOUR_STEPS: TourStep[] = [
+  {
+    id: 'subscription-tiers',
+    screen: 'settings',
+    targetId: 'subscription-tiers-grid',
+    title: 'Subscription Tiers',
+    description: 'Choose a plan that fits your trading needs. Click Subscribe to upgrade via Stripe checkout.',
+    placement: 'top',
+  },
+];
+
 export default function SubscriptionPanel() {
   const { data: tiers, isLoading: tiersLoading, isError: tiersError } = useListTiers();
   const { data: isStripeConfigured, isLoading: stripeConfigLoading } = useIsStripeConfigured();
@@ -84,6 +100,13 @@ export default function SubscriptionPanel() {
   const { showToast } = useToast();
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [processingTierId, setProcessingTierId] = useState<string | null>(null);
+  const { recordEvent } = useAnalytics();
+  const storeBackendEvent = useStoreAnalyticsEvent();
+  const { registerSteps } = useOnboardingTour();
+
+  useEffect(() => {
+    registerSteps(TOUR_STEPS);
+  }, [registerSteps]);
 
   const handleSubscribe = async (tierId: string, tierName: string, priceInCents: bigint) => {
     if (!identity) {
@@ -103,8 +126,15 @@ export default function SubscriptionPanel() {
 
     setProcessingTierId(tierId);
 
+    recordEvent('stripe', `checkout-${tierId}`, `Started checkout for ${tierName}`);
+    storeBackendEvent.mutate({
+      eventType: EventType.Stripe,
+      elementId: `checkout-${tierId}`,
+      count: 1,
+      payload: `Started checkout for ${tierName}`,
+    });
+
     try {
-      // Build description from tier name
       const description = `Monthly subscription to ${tierName} tier`;
 
       const items: ShoppingItem[] = [
@@ -131,7 +161,6 @@ export default function SubscriptionPanel() {
         throw new Error('Stripe session missing url');
       }
 
-      // Redirect to Stripe checkout
       window.location.href = session.url;
     } catch (error: any) {
       showToast('error', error.message || 'Failed to create checkout session');
@@ -143,30 +172,29 @@ export default function SubscriptionPanel() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-profit" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
       </div>
     );
   }
 
-  // Use fallback tiers if backend returns empty or errors
   const displayTiers = (tiers && tiers.length > 0) ? tiers : (tiersError || !tiers) ? FALLBACK_TIERS : [];
 
   if (displayTiers.length === 0) {
     return (
-      <div className="rounded-xl border border-white/5 bg-[#121212]/80 p-8 text-center backdrop-blur-xl">
-        <p className="text-white/50">No subscription tiers available</p>
-      </div>
+      <StateMessage
+        variant="empty"
+        title="No Subscription Tiers"
+        description="Subscription tiers are not available at this time."
+      />
     );
   }
 
-  // Sort tiers by price for consistent display
   const sortedTiers = [...displayTiers].sort((a, b) => Number(a.priceInCents) - Number(b.priceInCents));
-
-  // Determine which tier is "popular" (middle tier or Pro tier)
   const popularTierId = sortedTiers.length === 3 ? sortedTiers[1].id : 'pro';
 
-  // Determine active tier from user profile (planTier is an enum, not a discriminated union)
   const activeTierId = userProfile?.planTier
     ? userProfile.planTier === Variant_Pro_Free_Whale.Free
       ? 'free'
@@ -181,7 +209,7 @@ export default function SubscriptionPanel() {
     <>
       {!isStripeConfigured && isAdmin && (
         <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 backdrop-blur-xl">
-          <p className="mb-3 text-sm text-amber-200/90">
+          <p className="mb-3 text-sm leading-relaxed text-amber-200/90">
             Stripe is not configured. Configure it to enable payments.
           </p>
           <Button
@@ -194,7 +222,7 @@ export default function SubscriptionPanel() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div id="subscription-tiers-grid" className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {sortedTiers.map((tier) => {
           const isPopular = tier.id === popularTierId;
           const isFree = tier.priceInCents === BigInt(0);
@@ -203,7 +231,6 @@ export default function SubscriptionPanel() {
             ? 'Free'
             : `$${(Number(tier.priceInCents) / 100).toFixed(0)}/mo`;
 
-          // Build description from limits
           const limits: string[] = [];
           if (tier.maxBots !== undefined && tier.maxBots !== null) {
             const maxBots = Number(tier.maxBots);
@@ -227,7 +254,6 @@ export default function SubscriptionPanel() {
           }
           const description = limits.join(', ');
 
-          // Filter out support-related features
           const filteredFeatures = filterSupportFeatures(tier.features);
 
           const isProcessing = processingTierId === tier.id;
@@ -261,16 +287,16 @@ export default function SubscriptionPanel() {
               )}
 
               <div className="mb-6">
-                <h3 className="mb-1 text-xl font-medium tracking-tight text-white">{tier.name}</h3>
-                <p className="mb-4 text-sm text-white/50">{description}</p>
-                <div className="text-3xl font-medium text-white">{priceDisplay}</div>
+                <h3 className="mb-1 text-xl font-semibold tracking-tight text-white">{tier.name}</h3>
+                <p className="mb-4 text-sm leading-relaxed text-white/60">{description}</p>
+                <div className="text-3xl font-semibold text-white">{priceDisplay}</div>
               </div>
 
               <ul className="mb-6 flex-1 space-y-3">
                 {filteredFeatures.map((feature) => (
                   <li key={feature} className="flex items-start space-x-2">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-profit" />
-                    <span className="text-sm text-white/70">{feature}</span>
+                    <span className="text-sm leading-relaxed text-white/70">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -295,7 +321,7 @@ export default function SubscriptionPanel() {
                 >
                   {isProcessing ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
                       Processing...
                     </>
                   ) : (
@@ -317,7 +343,7 @@ export default function SubscriptionPanel() {
 
       {!isStripeConfigured && (
         <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-center backdrop-blur-xl">
-          <p className="text-sm text-white/60">
+          <p className="text-sm leading-relaxed text-white/60">
             Payment processing is being configured. Check back soon.
           </p>
         </div>

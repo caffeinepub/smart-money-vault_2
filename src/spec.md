@@ -1,12 +1,20 @@
 # Specification
 
 ## Summary
-**Goal:** Fix Connect Bot Wizard Ed25519 keypair generation to use `@noble/ed25519` (with a safe fallback) while keeping the wizard flow and UI behavior unchanged.
+**Goal:** Fix 5 critical security blockers and additional high-priority issues to prepare Smart Money Vault for mainnet deployment.
 
 **Planned changes:**
-- Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` `handleGenerateKeypair` to generate Ed25519 keys via `@noble/ed25519` (`ed.utils.randomPrivateKey()` and `await ed.getPublicKeyAsync(privateKey)`), avoiding Web Crypto Ed25519 generation on the normal path.
-- Display/copy the private key as a hex string for `BOT_PRIVATE_KEY`, while keeping the public key as a `Uint8Array` passed through the existing `linkMutation.mutateAsync(keypair.publicKey)` flow.
-- Add a fallback path when `@noble/ed25519` is unavailable: generate a 32-byte random seed, produce a placeholder derived public key, and include the exact comment `// TODO: Replace with real Ed25519 derivation in production.`
-- Preserve all existing wizard steps, blur/copy behavior, warning text, close/clear behavior, and existing mutation/link/save flows.
+- Implement stable storage for all backend state maps to prevent data loss during canister upgrades
+- Add full Ed25519 signature verification in verifyBotSignature() and check_uplink() functions
+- Encrypt Stripe secret key instead of storing as plaintext
+- Convert Stripe checkout from one-time payment to subscription mode with webhook support
+- Replace unsafe Ed25519 key generation fallback in ConnectBotWizardModal with tweetnacl or noble-ed25519
+- Implement cleanup timer for usedNonces map to prevent unbounded growth
+- Remove duplicate profile update functions (keep one implementation)
+- Replace assert statement in storeAnalyticsEvent with if/return pattern
+- Implement actual storage logic in storeJwt() and storeStrategicVault()
+- Fix getHeartbeatData() to use accountId parameter instead of caller
+- Remove unused 3D dependencies to reduce bundle size by ~500KB
+- Resolve build tool inconsistency between package.json and icp.yaml
 
-**User-visible outcome:** In the Connect Bot Wizard, users can generate and copy a `BOT_PRIVATE_KEY` and successfully link the derived public key without errors, with the same step-by-step experience as before.
+**User-visible outcome:** Users can trust that their data persists across upgrades, bot signatures are cryptographically verified, subscriptions work correctly with recurring billing, and the application is secure for mainnet deployment.

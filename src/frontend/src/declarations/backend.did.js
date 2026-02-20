@@ -64,6 +64,22 @@ export const License = IDL.Record({
   'updatedAt' : IDL.Opt(Time),
   'revokedAt' : IDL.Opt(Time),
 });
+export const EventType = IDL.Variant({
+  'Started' : IDL.Null,
+  'Tour' : IDL.Null,
+  'Navigation' : IDL.Null,
+  'Stripe' : IDL.Null,
+  'Completed' : IDL.Null,
+});
+export const AnalyticsEvent = IDL.Record({
+  'id' : IDL.Opt(IDL.Text),
+  'principal' : IDL.Opt(IDL.Principal),
+  'count' : IDL.Nat,
+  'timestamp' : IDL.Int,
+  'elementId' : IDL.Text,
+  'payload' : IDL.Opt(IDL.Text),
+  'eventType' : EventType,
+});
 export const AuditEntry = IDL.Record({
   'principal' : IDL.Principal,
   'action' : IDL.Text,
@@ -198,10 +214,21 @@ export const idlService = IDL.Service({
       [IDL.Vec(IDL.Tuple(AccountId, License))],
       ['query'],
     ),
+  'getAnalyticsEvents' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(AnalyticsEvent)],
+      ['query'],
+    ),
+  'getAnalyticsEventsForRange' : IDL.Func(
+      [IDL.Opt(IDL.Int), IDL.Opt(IDL.Int), IDL.Nat],
+      [IDL.Vec(AnalyticsEvent)],
+      ['query'],
+    ),
   'getAuditLog' : IDL.Func([IDL.Nat], [IDL.Vec(AuditEntry)], ['query']),
   'getBotProfile' : IDL.Func([], [IDL.Opt(BotProfile)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getEventTypeClass' : IDL.Func([EventType], [IDL.Opt(IDL.Text)], ['query']),
   'getHeartbeatData' : IDL.Func([AccountId], [HeartbeatData], ['query']),
   'getLicenseStatus' : IDL.Func(
       [AccountId, IDL.Vec(IDL.Nat8), IDL.Text, Time],
@@ -229,6 +256,11 @@ export const idlService = IDL.Service({
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setBotUrl' : IDL.Func([IDL.Text], [Result], []),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+  'storeAnalyticsEvent' : IDL.Func(
+      [IDL.Opt(IDL.Text), EventType, IDL.Text, IDL.Nat, IDL.Opt(IDL.Text)],
+      [],
+      [],
+    ),
   'storeJwt' : IDL.Func([IDL.Text, AccountId], [Result_2], []),
   'storeStrategicVault' : IDL.Func([StrategicVault, AccountId], [Result_1], []),
   'submitTrade' : IDL.Func([Trade, IDL.Vec(IDL.Nat8), IDL.Text, Time], [], []),
@@ -239,7 +271,6 @@ export const idlService = IDL.Service({
       [TransformationOutput],
       ['query'],
     ),
-  'update_profile' : IDL.Func([UserProfile], [], []),
   'update_tier' : IDL.Func([IDL.Text, SubscriptionTier], [Result], []),
 });
 
@@ -301,6 +332,22 @@ export const idlFactory = ({ IDL }) => {
     'createdAt' : Time,
     'updatedAt' : IDL.Opt(Time),
     'revokedAt' : IDL.Opt(Time),
+  });
+  const EventType = IDL.Variant({
+    'Started' : IDL.Null,
+    'Tour' : IDL.Null,
+    'Navigation' : IDL.Null,
+    'Stripe' : IDL.Null,
+    'Completed' : IDL.Null,
+  });
+  const AnalyticsEvent = IDL.Record({
+    'id' : IDL.Opt(IDL.Text),
+    'principal' : IDL.Opt(IDL.Principal),
+    'count' : IDL.Nat,
+    'timestamp' : IDL.Int,
+    'elementId' : IDL.Text,
+    'payload' : IDL.Opt(IDL.Text),
+    'eventType' : EventType,
   });
   const AuditEntry = IDL.Record({
     'principal' : IDL.Principal,
@@ -431,10 +478,21 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(AccountId, License))],
         ['query'],
       ),
+    'getAnalyticsEvents' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(AnalyticsEvent)],
+        ['query'],
+      ),
+    'getAnalyticsEventsForRange' : IDL.Func(
+        [IDL.Opt(IDL.Int), IDL.Opt(IDL.Int), IDL.Nat],
+        [IDL.Vec(AnalyticsEvent)],
+        ['query'],
+      ),
     'getAuditLog' : IDL.Func([IDL.Nat], [IDL.Vec(AuditEntry)], ['query']),
     'getBotProfile' : IDL.Func([], [IDL.Opt(BotProfile)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getEventTypeClass' : IDL.Func([EventType], [IDL.Opt(IDL.Text)], ['query']),
     'getHeartbeatData' : IDL.Func([AccountId], [HeartbeatData], ['query']),
     'getLicenseStatus' : IDL.Func(
         [AccountId, IDL.Vec(IDL.Nat8), IDL.Text, Time],
@@ -462,6 +520,11 @@ export const idlFactory = ({ IDL }) => {
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setBotUrl' : IDL.Func([IDL.Text], [Result], []),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+    'storeAnalyticsEvent' : IDL.Func(
+        [IDL.Opt(IDL.Text), EventType, IDL.Text, IDL.Nat, IDL.Opt(IDL.Text)],
+        [],
+        [],
+      ),
     'storeJwt' : IDL.Func([IDL.Text, AccountId], [Result_2], []),
     'storeStrategicVault' : IDL.Func(
         [StrategicVault, AccountId],
@@ -480,7 +543,6 @@ export const idlFactory = ({ IDL }) => {
         [TransformationOutput],
         ['query'],
       ),
-    'update_profile' : IDL.Func([UserProfile], [], []),
     'update_tier' : IDL.Func([IDL.Text, SubscriptionTier], [Result], []),
   });
 };

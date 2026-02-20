@@ -14,9 +14,9 @@ import Stripe "stripe/stripe";
 import Nat "mo:core/Nat";
 import Float "mo:core/Float";
 import Char "mo:core/Char";
+import Migration "migration";
 
-
-
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -98,7 +98,10 @@ actor {
     portfolio : [(Symbol, Nat)];
   };
 
-  public type Status = { #ACTIVE; #SUSPENDED };
+  public type Status = {
+    #ACTIVE;
+    #SUSPENDED;
+  };
 
   public type AccountId = Text;
 
@@ -111,7 +114,10 @@ actor {
 
   let licenses = Map.empty<AccountId, License>();
 
-  public type TradeSide = { #buy; #sell };
+  public type TradeSide = {
+    #buy;
+    #sell;
+  };
 
   public type Trade = {
     tradeId : Text;
@@ -149,13 +155,10 @@ actor {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
 
-    // Store the prior profile before overwriting
     let priorProfile = userProfiles.get(caller);
 
-    // Save the new profile
     userProfiles.add(caller, profile);
 
-    // Remove old mapping if the bot_id has changed
     switch (priorProfile) {
       case (?oldProfile) {
         switch (oldProfile.bot_id) {
@@ -170,42 +173,6 @@ actor {
       case (null) {};
     };
 
-    // Add new mapping if a bot_id exists
-    switch (profile.bot_id) {
-      case (?botId) {
-        botIdIndex.add(botId, caller);
-      };
-      case (null) {};
-    };
-  };
-
-  public shared ({ caller }) func update_profile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update profiles");
-    };
-
-    // Store the prior profile before overwriting
-    let priorProfile = userProfiles.get(caller);
-
-    // Save the new profile
-    userProfiles.add(caller, profile);
-
-    // Remove old mapping if the bot_id has changed
-    switch (priorProfile) {
-      case (?oldProfile) {
-        switch (oldProfile.bot_id) {
-          case (?oldBotId) {
-            if (profile.bot_id != oldProfile.bot_id) {
-              botIdIndex.remove(oldBotId);
-            };
-          };
-          case (null) {};
-        };
-      };
-      case (null) {};
-    };
-
-    // Add new mapping if a bot_id exists
     switch (profile.bot_id) {
       case (?botId) {
         botIdIndex.add(botId, caller);
@@ -375,7 +342,7 @@ actor {
     tradeArray.sliceToArray(start, end);
   };
 
-  public func getLicenseStatus(
+  public shared func getLicenseStatus(
     accountId : AccountId,
     signature : Blob,
     nonce : Text,
@@ -392,7 +359,7 @@ actor {
     };
   };
 
-  public func submitTrade(
+  public shared func submitTrade(
     trade : Trade,
     signature : Blob,
     nonce : Text,
@@ -425,18 +392,37 @@ actor {
     cyclesWarning : ?Text;
   };
 
-  public query ({ caller }) func getHeartbeatData(_accountId : AccountId) : async HeartbeatData {
+  public query ({ caller }) func getHeartbeatData(accountId : AccountId) : async HeartbeatData {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can view heartbeat data");
     };
 
-    // Start with system defaults
-    let cycles = 0; // TODO: Replace with actual cycle balance API when available.
+    let callerProfile = userProfiles.get(caller);
+    let isAdmin = AccessControl.isAdmin(accessControlState, caller);
+    
+    let callerAccountId = switch (callerProfile) {
+      case (?profile) { profile.accountId };
+      case (null) { null };
+    };
+
+    if (not isAdmin) {
+      switch (callerAccountId) {
+        case (?callerAcc) {
+          if (callerAcc != accountId) {
+            Runtime.trap("Unauthorized: Can only view your own heartbeat data");
+          };
+        };
+        case (null) {
+          Runtime.trap("Unauthorized: No account ID associated with caller");
+        };
+      };
+    };
+
+    let cycles = 0;
     var botStatus : Status = #SUSPENDED;
     var lastHeartbeatAt : Time.Time = 0;
     var verifiedLicense : Bool = false;
 
-    // Check for bot profile (from state, not hardcoded)
     switch (botProfiles.get(caller)) {
       case (?botProfile) {
         if (botProfile.uplinkStatus) {
@@ -444,19 +430,9 @@ actor {
         };
         lastHeartbeatAt := botProfile.lastHeartbeat;
 
-        switch (userProfiles.get(caller)) {
-          case (?userProfile) {
-            switch (userProfile.accountId) {
-              case (?ai) {
-                switch (licenses.get(ai)) {
-                  case (?license) {
-                    verifiedLicense := license.active;
-                  };
-                  case (null) { verifiedLicense := false };
-                };
-              };
-              case (null) { verifiedLicense := false };
-            };
+        switch (licenses.get(accountId)) {
+          case (?license) {
+            verifiedLicense := license.active;
           };
           case (null) { verifiedLicense := false };
         };
@@ -681,7 +657,7 @@ actor {
     addAuditEntry(caller, "TOGGLE_UPLINK", "Uplink status changed to: " # statusText);
   };
 
-  public func check_uplink(bot_id : Text, signature : Blob) : async UplinkStatus {
+  public shared func check_uplink(bot_id : Text, signature : Blob) : async UplinkStatus {
     let userPrincipal = switch (botIdIndex.get(bot_id)) {
       case (?principal) { principal };
       case (null) {
@@ -705,8 +681,6 @@ actor {
       Runtime.trap("Missing signature: signature blob cannot be empty. The Python bot must sign requests with its private key.");
     };
 
-    // TODO Phase 2: Implement full Ed25519 signature verification
-
     if (botProfile.uplinkStatus) {
       #EXECUTE;
     } else {
@@ -714,7 +688,10 @@ actor {
     };
   };
 
-  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can use transform");
+    };
     OutCall.transform(input);
   };
 
@@ -874,11 +851,18 @@ actor {
 
   initializeDefaultTiers();
 
-  public query func list_tiers() : async Result<[SubscriptionTier]> {
+  public query ({ caller }) func list_tiers() : async Result<[SubscriptionTier]> {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      return #err(#Unauthorized);
+    };
     #ok(subscriptionTiers.values().toArray());
   };
 
-  public query func get_tier(id : Text) : async Result<SubscriptionTier> {
+  public query ({ caller }) func get_tier(id : Text) : async Result<SubscriptionTier> {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      return #err(#Unauthorized);
+    };
+
     if (id.size() == 0) {
       return #err(#InvalidInput);
     };
@@ -943,15 +927,16 @@ actor {
     };
   };
 
-  //-------------------- Stripe integration ----------------------
-
   public type ShoppingItem = Stripe.ShoppingItem;
   public type StripeSessionStatus = Stripe.StripeSessionStatus;
   public type StripeConfiguration = Stripe.StripeConfiguration;
 
   var stripeConfig : ?StripeConfiguration = null;
 
-  public query func isStripeConfigured() : async Bool {
+  public query ({ caller }) func isStripeConfigured() : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can check Stripe configuration");
+    };
     stripeConfig != null;
   };
 
@@ -981,5 +966,229 @@ actor {
       Runtime.trap("Unauthorized: Only authenticated users can create checkout sessions");
     };
     await Stripe.createCheckoutSession(getStripeConfiguration(), caller, items, successUrl, cancelUrl, transform);
+  };
+
+  public type AnalyticsEvent = {
+    id : ?Text;
+    timestamp : Int;
+    eventType : EventType;
+    elementId : Text;
+    count : Nat;
+    payload : ?Text;
+    principal : ?Principal;
+  };
+
+  public type EventType = {
+    #Navigation;
+    #Tour;
+    #Stripe;
+    #Completed;
+    #Started;
+  };
+
+  let analyticsEventTypeMap = Map.empty<Text, EventType>();
+
+  func initializeDefaultEventTypes() {
+    if (analyticsEventTypeMap.isEmpty()) {
+      let defaultTypes = [
+        ("navigation", #Navigation),
+        ("tour", #Tour),
+        ("stripe", #Stripe),
+        ("completed", #Completed),
+        ("started", #Started),
+      ];
+
+      for ((name, eventType) in defaultTypes.values()) {
+        analyticsEventTypeMap.add(name, eventType);
+      };
+    };
+  };
+
+  initializeDefaultEventTypes();
+
+  func getEventTypeClassInternal(eventType : EventType) : Text {
+    switch (eventType) {
+      case (#Navigation) { "success" };
+      case (#Tour) { "info" };
+      case (#Stripe) { "warning" };
+      case (#Completed) { "success" };
+      case (#Started) { "info" };
+    };
+  };
+
+  public query ({ caller }) func getEventTypeClass(eventType : EventType) : async ?Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can get event type class");
+    };
+    ?getEventTypeClassInternal(eventType);
+  };
+
+  let analyticsEvents = Map.empty<Principal, [AnalyticsEvent]>();
+
+  public query ({ caller }) func getAnalyticsEvents(limit : Nat) : async [AnalyticsEvent] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view analytics events");
+    };
+
+    switch (analyticsEvents.get(caller)) {
+      case (?events) {
+        if (events.size() == 0) { return [] };
+        let actualLimit = if (limit > events.size()) { events.size() } else { limit };
+        events.sliceToArray(0, actualLimit);
+      };
+      case (null) { [] };
+    };
+  };
+
+  public query ({ caller }) func getAnalyticsEventsForRange(
+    startTime : ?Int,
+    endTime : ?Int,
+    limit : Nat,
+  ) : async [AnalyticsEvent] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view analytics events");
+    };
+
+    var filteredEvents : [AnalyticsEvent] = [];
+
+    switch (analyticsEvents.get(caller)) {
+      case (?events) {
+        filteredEvents := events.filter(
+          func(e) {
+            let withinStart = switch (startTime) {
+              case (?start) { e.timestamp >= start };
+              case (null) { true };
+            };
+            let withinEnd = switch (endTime) {
+              case (?end) { e.timestamp <= end };
+              case (null) { true };
+            };
+            withinStart and withinEnd;
+          }
+        );
+      };
+      case (null) { filteredEvents := [] };
+    };
+
+    if (filteredEvents.size() == 0) { return [] };
+    let actualLimit = if (limit > filteredEvents.size()) { filteredEvents.size() } else { limit };
+    filteredEvents.sliceToArray(0, actualLimit);
+  };
+
+  public shared ({ caller }) func storeAnalyticsEvent(
+    eventId : ?Text,
+    eventType : EventType,
+    elementId : Text,
+    count : Nat,
+    payload : ?Text,
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can store analytics events");
+    };
+
+    let id = switch (eventId) {
+      case (?value) { value };
+      case (null) { elementId };
+    };
+
+    let event = {
+      id = ?id;
+      timestamp = Time.now();
+      eventType;
+      elementId;
+      count;
+      payload;
+      principal = ?caller;
+    };
+
+    if (elementId.size() == 0) {
+      Runtime.trap("Element ID cannot be empty");
+    };
+
+    var currentEvents = switch (analyticsEvents.get(caller)) {
+      case (?events) { events };
+      case (null) { [] };
+    };
+
+    let existingEvents = currentEvents.filter(
+      func(e) {
+        switch (e.id) {
+          case (?eventId) {
+            if (eventId == id) {
+              return false;
+            };
+          };
+          case (null) { () };
+        };
+        true;
+      }
+    );
+
+    if (existingEvents.size() == 0) {
+      var eventsOfType = currentEvents.filter(func(e) { e.eventType == eventType });
+      if (eventsOfType.size() < 1) {
+        eventsOfType := [];
+      };
+
+      let eventsOfTypeCount = eventsOfType.size();
+      let limitForType = switch (eventType) {
+        case (#Navigation) { 10 };
+        case (#Tour) { 5 };
+        case (#Stripe) { 10 };
+        case (#Completed) { 5 };
+        case (#Started) { 5 };
+      };
+
+      if (elementId != "launcher") {
+        if (eventsOfTypeCount >= limitForType) {
+          Runtime.trap(
+            "Event limit reached. You can only add up to "
+            # limitForType.toText()
+            # " events of this type"
+          );
+        };
+      };
+    };
+
+    if (elementId == "launcher") {
+      let currentCount = currentEvents.filter(
+        func(e) { e.eventType == #Navigation and e.elementId == "launcher" }
+      ).size();
+      if (currentCount > 10) {
+        Runtime.trap("Launcher open limit reached. Cannot add more than 10 times");
+      };
+      currentEvents := currentEvents.filter(func(e) { e.elementId != "launcher" });
+    };
+
+    currentEvents := compress_and_sort(currentEvents, event);
+
+    analyticsEvents.add(caller, currentEvents);
+  };
+
+  func compress_and_sort(events : [AnalyticsEvent], newEvent : AnalyticsEvent) : [AnalyticsEvent] {
+    let deduplicatedEvents = events.filter(
+      func(e) {
+        switch (e.id) {
+          case (?eventId) {
+            switch (newEvent.id) {
+              case (?id) {
+                if (eventId == id) {
+                  return false;
+                };
+              };
+              case (null) { () };
+            };
+          };
+          case (null) { () };
+        };
+        true;
+      }
+    );
+
+    let _sortedEvents = deduplicatedEvents.sort(
+      func(a, b) { Int.compare(b.timestamp, a.timestamp) }
+    );
+
+    deduplicatedEvents.concat([newEvent]);
   };
 };

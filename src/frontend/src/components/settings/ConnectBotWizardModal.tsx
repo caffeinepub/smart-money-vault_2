@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useLinkBotPublicKey } from '../../hooks/useLinkBotPublicKey';
 import { useSetBotUrl } from '../../hooks/useSetBotUrl';
-import { Key, Copy, CheckCircle2, AlertTriangle, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Key, Copy, CheckCircle2, AlertTriangle, Loader2, ArrowRight, ArrowLeft, XCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface ConnectBotWizardModalProps {
@@ -14,7 +14,7 @@ interface ConnectBotWizardModalProps {
   onClose: () => void;
 }
 
-type WizardStep = 'generate' | 'reveal' | 'link' | 'url' | 'done';
+type WizardStep = 'generate' | 'reveal' | 'link' | 'url' | 'done' | 'error';
 
 // Helper function to convert Uint8Array to hex string
 function bytesToHex(bytes: Uint8Array): string {
@@ -51,20 +51,15 @@ async function generateEd25519Keypair(): Promise<{ privateKey: Uint8Array; publi
       }
       return { privateKey, publicKey };
     }
-  } catch (webCryptoError) {
-    console.warn('Web Crypto Ed25519 not available, using fallback:', webCryptoError);
+    
+    throw new Error('Failed to extract private key from Web Crypto API');
+  } catch (error) {
+    console.error('Web Crypto Ed25519 generation failed:', error);
+    throw new Error(
+      'Ed25519 key generation is not supported in your browser. ' +
+      'Please use a modern browser: Chrome 93+, Firefox 119+, Safari 17+, or Edge 93+.'
+    );
   }
-
-  // Fallback: Generate random seed when Web Crypto Ed25519 is not available
-  // TODO: Replace with real Ed25519 derivation in production.
-  const privateKey = new Uint8Array(32);
-  window.crypto.getRandomValues(privateKey);
-  
-  // Generate a placeholder public key (not cryptographically derived)
-  const publicKey = new Uint8Array(32);
-  window.crypto.getRandomValues(publicKey);
-  
-  return { privateKey, publicKey };
 }
 
 export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizardModalProps) {
@@ -73,12 +68,14 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
   const [botUrl, setBotUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [urlError, setUrlError] = useState('');
+  const [generationError, setGenerationError] = useState('');
   
   const linkMutation = useLinkBotPublicKey();
   const urlMutation = useSetBotUrl();
 
   const handleGenerateKeypair = async () => {
     try {
+      setGenerationError('');
       const { privateKey, publicKey } = await generateEd25519Keypair();
       
       // Convert private key to hex string for BOT_PRIVATE_KEY
@@ -86,14 +83,16 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
       
       setKeypair({ publicKey, privateKey: privateKeyHex });
       setStep('reveal');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate keypair:', error);
+      setGenerationError(error.message || 'Failed to generate Ed25519 keypair. Your browser may not support the required cryptographic operations.');
+      setStep('error');
     }
   };
 
-  const handleCopyPrivateKey = async () => {
-    if (keypair?.privateKey) {
-      await navigator.clipboard.writeText(keypair.privateKey);
+  const handleCopyPrivateKey = () => {
+    if (keypair) {
+      navigator.clipboard.writeText(keypair.privateKey);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -106,124 +105,209 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
       await linkMutation.mutateAsync(keypair.publicKey);
       setStep('url');
     } catch (error) {
-      // Error is handled by the mutation's onError
+      console.error('Failed to link public key:', error);
     }
   };
 
   const handleSaveBotUrl = async () => {
-    setUrlError('');
-    
     if (!botUrl.trim()) {
-      setUrlError('Bot URL is required');
+      setUrlError('Please enter a bot URL');
       return;
     }
-    
+
     if (!botUrl.startsWith('https://')) {
-      setUrlError('Bot URL must start with https://');
+      setUrlError('URL must start with https://');
       return;
     }
-    
+
+    setUrlError('');
+
     try {
-      await urlMutation.mutateAsync(botUrl);
+      await urlMutation.mutateAsync(botUrl.trim());
       setStep('done');
-    } catch (error) {
-      // Error is handled by the mutation's onError
+    } catch (error: any) {
+      setUrlError(error.message || 'Failed to save bot URL');
     }
   };
 
   const handleClose = () => {
-    // Clear sensitive data
+    setStep('generate');
     setKeypair(null);
     setBotUrl('');
-    setStep('generate');
     setCopied(false);
     setUrlError('');
+    setGenerationError('');
     onClose();
+  };
+
+  const handleRetryGeneration = () => {
+    setGenerationError('');
+    setStep('generate');
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="border-white/10 bg-[#121212] text-white sm:max-w-[500px]">
+      <DialogContent className="glass border-white/10 bg-charcoal-900/90 backdrop-blur-md sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-medium tracking-tight">Connect Your Bot</DialogTitle>
-          <DialogDescription className="text-sm text-white/50">
-            {step === 'generate' && 'Generate a secure Ed25519 keypair for your Python bot'}
-            {step === 'reveal' && 'Save your private key - it will only be shown once'}
-            {step === 'link' && 'Linking your public key to the backend'}
-            {step === 'url' && 'Configure your bot HTTPS endpoint'}
-            {step === 'done' && 'Setup complete! Your bot is ready to connect'}
+          <DialogTitle className="text-white">Connect Your Trading Bot</DialogTitle>
+          <DialogDescription className="text-white/60">
+            Follow these steps to securely link your Python trading bot
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Step 1: Generate */}
+        <div className="space-y-6">
+          {/* Step Indicator */}
+          <div className="flex items-center justify-between">
+            {['generate', 'reveal', 'link', 'url', 'done'].map((s, idx) => (
+              <div key={s} className="flex items-center">
+                <div
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium',
+                    step === s
+                      ? 'bg-emerald-500 text-black'
+                      : ['generate', 'reveal', 'link', 'url', 'done'].indexOf(step) > idx
+                      ? 'bg-emerald-500/20 text-emerald-500'
+                      : 'bg-white/5 text-white/40'
+                  )}
+                >
+                  {idx + 1}
+                </div>
+                {idx < 4 && (
+                  <div
+                    className={cn(
+                      'mx-2 h-0.5 w-8',
+                      ['generate', 'reveal', 'link', 'url', 'done'].indexOf(step) > idx
+                        ? 'bg-emerald-500/40'
+                        : 'bg-white/10'
+                    )}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Step Content */}
           {step === 'generate' && (
             <div className="space-y-4">
-              <Alert className="border-white/10 bg-white/5">
-                <Key className="h-4 w-4 text-white/70" />
-                <AlertDescription className="text-xs text-white/70">
-                  This will create a new Ed25519 keypair in your browser. The private key will be shown only once.
+              <Alert className="border-emerald-500/20 bg-emerald-500/5">
+                <Key className="h-4 w-4 text-emerald-500" />
+                <AlertDescription className="text-white/80">
+                  Generate a new Ed25519 keypair for secure bot authentication
                 </AlertDescription>
               </Alert>
-              
               <Button
                 onClick={handleGenerateKeypair}
-                size="lg"
-                className="w-full bg-profit font-medium text-black hover:bg-profit/90"
+                className="w-full bg-emerald-500 text-black hover:bg-emerald-600"
               >
                 <Key className="mr-2 h-4 w-4" />
-                Generate Bot Identity
+                Generate Keypair
               </Button>
             </div>
           )}
 
-          {/* Step 2: Reveal Private Key */}
+          {step === 'error' && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="mb-4 rounded-full bg-destructive/10 p-4">
+                  <XCircle className="h-12 w-12 text-destructive" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold text-white">Key Generation Failed</h3>
+                <p className="text-center text-sm text-white/60 mb-4 max-w-md">
+                  {generationError}
+                </p>
+                <Alert className="border-amber-500/20 bg-amber-500/5">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <AlertDescription className="text-white/80">
+                    Ed25519 requires a modern browser. Please update to Chrome 93+, Firefox 119+, Safari 17+, or Edge 93+.
+                  </AlertDescription>
+                </Alert>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleClose}
+                  variant="outline"
+                  className="flex-1 border-white/10 bg-white/5 text-white hover:bg-white/10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRetryGeneration}
+                  className="flex-1 bg-emerald-500 text-black hover:bg-emerald-600"
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          )}
+
           {step === 'reveal' && keypair && (
             <div className="space-y-4">
-              <Alert className="border-yellow-500/20 bg-yellow-500/10">
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                <AlertDescription className="text-xs text-yellow-500">
-                  Paste this into your Python Bot's .env file as BOT_PRIVATE_KEY. This will not be shown again.
+              <Alert className="border-amber-500/20 bg-amber-500/5">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <AlertDescription className="text-white/80">
+                  Copy your private key now. You won't be able to see it again!
                 </AlertDescription>
               </Alert>
-
               <div className="space-y-2">
-                <Label className="text-sm text-white/70">Private Key (One-Time Display)</Label>
+                <Label className="text-white/80">Private Key (BOT_PRIVATE_KEY)</Label>
                 <div className="relative">
                   <Input
                     value={keypair.privateKey}
                     readOnly
-                    className={cn(
-                      'font-mono text-xs bg-[#0A0A0A] border-white/10 text-white pr-24',
-                      'blur-sm hover:blur-none focus:blur-none transition-all'
-                    )}
+                    className="font-mono border-white/10 bg-charcoal-950/80 pr-10 text-xs text-white"
                   />
-                  <Button
+                  <button
                     onClick={handleCopyPrivateKey}
-                    size="sm"
-                    variant="ghost"
-                    className="absolute right-1 top-1 h-8 text-white/50 hover:text-white/70"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80"
                   >
-                    {copied ? (
-                      <>
-                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="mr-1 h-3.5 w-3.5" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
+                    {copied ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                  </button>
                 </div>
+                <p className="text-xs text-white/40">
+                  Store this in your Python bot's environment as BOT_PRIVATE_KEY
+                </p>
               </div>
-
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <Button
                   onClick={() => setStep('generate')}
                   variant="outline"
-                  className="flex-1 border-white/10 text-white/70 hover:bg-white/5"
+                  className="flex-1 border-white/10 bg-white/5 text-white hover:bg-white/10"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+                <Button
+                  onClick={() => setStep('link')}
+                  className="flex-1 bg-emerald-500 text-black hover:bg-emerald-600"
+                >
+                  Next
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 'link' && keypair && (
+            <div className="space-y-4">
+              <Alert className="border-emerald-500/20 bg-emerald-500/5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <AlertDescription className="text-white/80">
+                  Link the public key to your account for bot authentication
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                <Label className="text-white/80">Public Key</Label>
+                <Input
+                  value={bytesToHex(keypair.publicKey)}
+                  readOnly
+                  className="font-mono border-white/10 bg-charcoal-950/80 text-xs text-white"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setStep('reveal')}
+                  variant="outline"
+                  className="flex-1 border-white/10 bg-white/5 text-white hover:bg-white/10"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
@@ -231,7 +315,7 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
                 <Button
                   onClick={handleLinkPublicKey}
                   disabled={linkMutation.isPending}
-                  className="flex-1 bg-profit font-medium text-black hover:bg-profit/90"
+                  className="flex-1 bg-emerald-500 text-black hover:bg-emerald-600"
                 >
                   {linkMutation.isPending ? (
                     <>
@@ -249,37 +333,40 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
             </div>
           )}
 
-          {/* Step 3: Configure Bot URL */}
           {step === 'url' && (
             <div className="space-y-4">
-              <Alert className="border-white/10 bg-white/5">
-                <Info className="h-4 w-4 text-white/70" />
-                <AlertDescription className="text-xs text-white/70">
-                  Enter your bot's public HTTPS endpoint (e.g., ngrok URL). This must start with https://
+              <Alert className="border-emerald-500/20 bg-emerald-500/5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <AlertDescription className="text-white/80">
+                  Configure your bot's HTTPS endpoint URL
                 </AlertDescription>
               </Alert>
-
               <div className="space-y-2">
-                <Label className="text-sm text-white/70">Bot HTTPS URL</Label>
+                <Label htmlFor="botUrl" className="text-white/80">
+                  Bot HTTPS URL
+                </Label>
                 <Input
+                  id="botUrl"
                   value={botUrl}
                   onChange={(e) => {
                     setBotUrl(e.target.value);
                     setUrlError('');
                   }}
-                  placeholder="https://your-bot.ngrok-free.app/api/v1/signals"
-                  className="bg-[#0A0A0A] border-white/10 text-white"
+                  placeholder="https://your-bot-endpoint.com/api"
+                  className="border-white/10 bg-charcoal-950/80 text-white placeholder:text-white/40"
                 />
                 {urlError && (
-                  <p className="text-xs text-loss">{urlError}</p>
+                  <p className="text-xs text-destructive">{urlError}</p>
                 )}
+                <p className="text-xs text-white/40">
+                  The HTTPS endpoint where your bot receives signals
+                </p>
               </div>
-
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <Button
-                  onClick={() => setStep('reveal')}
+                  onClick={() => setStep('link')}
                   variant="outline"
-                  className="flex-1 border-white/10 text-white/70 hover:bg-white/5"
+                  className="flex-1 border-white/10 bg-white/5 text-white hover:bg-white/10"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
@@ -287,7 +374,7 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
                 <Button
                   onClick={handleSaveBotUrl}
                   disabled={urlMutation.isPending}
-                  className="flex-1 bg-profit font-medium text-black hover:bg-profit/90"
+                  className="flex-1 bg-emerald-500 text-black hover:bg-emerald-600"
                 >
                   {urlMutation.isPending ? (
                     <>
@@ -305,20 +392,20 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
             </div>
           )}
 
-          {/* Step 4: Done */}
           {step === 'done' && (
             <div className="space-y-4">
-              <Alert className="border-profit/20 bg-profit/10">
-                <CheckCircle2 className="h-4 w-4 text-profit" />
-                <AlertDescription className="text-sm text-profit">
-                  Bot setup complete! Your Python bot can now connect to the dashboard.
-                </AlertDescription>
-              </Alert>
-
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="mb-4 rounded-full bg-emerald-500/10 p-4">
+                  <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold text-white">Bot Connected!</h3>
+                <p className="text-center text-sm text-white/60">
+                  Your trading bot is now configured and ready to receive signals
+                </p>
+              </div>
               <Button
                 onClick={handleClose}
-                size="lg"
-                className="w-full bg-profit font-medium text-black hover:bg-profit/90"
+                className="w-full bg-emerald-500 text-black hover:bg-emerald-600"
               >
                 Done
               </Button>
@@ -327,26 +414,5 @@ export default function ConnectBotWizardModal({ open, onClose }: ConnectBotWizar
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Info({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4" />
-      <path d="M12 8h.01" />
-    </svg>
   );
 }

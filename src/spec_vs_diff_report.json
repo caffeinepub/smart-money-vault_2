@@ -1,52 +1,114 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T02:21:22.579Z",
-  "summary": "REQ-41 is not implemented as specified. The diff keeps/introduces Web Crypto Ed25519 generation as the primary path and does not use `@noble/ed25519` for keypair derivation. A fallback exists with the required TODO comment, but the normal-path requirements (noble generation and derived public key) are missing.",
+  "generatedAt": "2026-02-20T12:10:15.182Z",
+  "summary": "The diff shows minimal implementation progress. Only one new file (migration.mo) was added with a placeholder migration function. The main.mo file was modified to import the migration module and reference it, but the diff is truncated. The frontend ConnectBotWizardModal.tsx shows an attempt to address REQ-7 by removing the unsafe fallback and throwing an error instead. No evidence of implementation for most critical security requirements (REQ-1 through REQ-14).",
   "missing_requirements": [
     {
-      "id": "REQ-41",
-      "requirement": "In `frontend/src/components/settings/ConnectBotWizardModal.tsx`, `handleGenerateKeypair` must generate the Ed25519 keypair using `@noble/ed25519` exactly: `import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);` (no Web Crypto Ed25519 on the normal path).",
-      "reason": "The implementation uses `window.crypto.subtle.generateKey({ name: 'Ed25519' })` as the primary generation method and contains no `@noble/ed25519` import or usage of `ed.utils.randomPrivateKey()` / `ed.getPublicKeyAsync()`.",
+      "id": "REQ-1",
+      "requirement": "Implement stable storage for all backend state maps using stable type declarations or Pre/Post-Upgrade hooks with serialization",
+      "reason": "No evidence of stable storage implementation in the truncated main.mo diff. The migration.mo file is a placeholder with no actual migration logic. State maps (userProfiles, trades, licenses, etc.) remain unmodified.",
       "evidence": [
-        "frontend/src/components/settings/ConnectBotWizardModal.tsx (generateEd25519Keypair uses `window.crypto.subtle.generateKey` and exports keys; no noble import present)"
+        "backend/migration.mo",
+        "backend/main.mo"
       ]
     },
     {
-      "id": "REQ-41",
-      "requirement": "On the normal path, the public key must be derived from the generated private key (not independently random bytes) via noble.",
-      "reason": "The normal path derives the public key by exporting from a Web Crypto keypair, not by deriving from `privateKey` using noble. Additionally, the fallback explicitly generates the public key as independent random bytes (placeholder).",
+      "id": "REQ-2",
+      "requirement": "Implement full Ed25519 signature verification in verifyBotSignature() function",
+      "reason": "No evidence of cryptographic verification implementation in the diff. The verifyBotSignature function is not shown in the truncated main.mo changes.",
       "evidence": [
-        "frontend/src/components/settings/ConnectBotWizardModal.tsx (`exportKey('raw', cryptoKeyPair.publicKey)` on normal path; fallback uses `window.crypto.getRandomValues(publicKey)` with comment 'not cryptographically derived')"
+        "backend/main.mo"
       ]
     },
     {
-      "id": "REQ-41",
-      "requirement": "If `@noble/ed25519` is not available at runtime/build-time, fall back to generating a 32-byte random seed and produce a placeholder derived public key (while keeping the normal path as noble).",
-      "reason": "The fallback is triggered by Web Crypto unavailability, not noble unavailability; noble is not attempted at all.",
+      "id": "REQ-3",
+      "requirement": "Implement full Ed25519 signature verification in check_uplink() function",
+      "reason": "No evidence of check_uplink() modifications in the truncated main.mo diff. TODO comment removal and verification logic not shown.",
       "evidence": [
-        "frontend/src/components/settings/ConnectBotWizardModal.tsx (try/catch around Web Crypto; warning message: 'Web Crypto Ed25519 not available, using fallback')"
+        "backend/main.mo"
       ]
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Encrypt the Stripe secret key in stripeConfig instead of storing it as plaintext",
+      "reason": "No evidence of Stripe secret key encryption implementation in the diff. stripeConfig modifications not shown.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Change Stripe checkout session creation from mode=payment to mode=subscription",
+      "reason": "No evidence of stripe.mo modifications in the diff. The Stripe module changes are not included.",
+      "evidence": []
+    },
+    {
+      "id": "REQ-6",
+      "requirement": "Implement Stripe webhooks to handle invoice.paid and customer.subscription.deleted events",
+      "reason": "No evidence of webhook endpoint implementation in the diff. Backend webhook handling not shown.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "requirement": "Implement a cleanup timer for the usedNonces map to prevent unbounded growth",
+      "reason": "No evidence of timer implementation in the truncated main.mo diff. No periodic cleanup logic shown.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "requirement": "Remove the duplicate function between saveCallerUserProfile() and update_profile()",
+      "reason": "Both functions still appear to exist in the truncated main.mo diff. saveCallerUserProfile is visible; no evidence of deduplication.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "requirement": "Replace the assert statement in storeAnalyticsEvent filter with an if/return pattern",
+      "reason": "No evidence of storeAnalyticsEvent modifications in the truncated main.mo diff. Assert replacement not shown.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "requirement": "Implement actual storage logic in storeJwt() and storeStrategicVault() functions",
+      "reason": "No evidence of storeJwt() or storeStrategicVault() implementation in the truncated diff.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "requirement": "Fix getHeartbeatData() to use the accountId parameter instead of caller principal",
+      "reason": "No evidence of getHeartbeatData() modifications in the truncated main.mo diff.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "requirement": "Remove unused 3D dependencies from package.json to reduce bundle size",
+      "reason": "No evidence of package.json modifications in the diff. 3D dependencies removal not shown.",
+      "evidence": []
+    },
+    {
+      "id": "REQ-14",
+      "requirement": "Resolve the build tool inconsistency between package.json and icp.yaml",
+      "reason": "No evidence of package.json or icp.yaml modifications in the diff. Build configuration alignment not shown.",
+      "evidence": []
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "Primary Ed25519 keypair generation using Web Crypto (`window.crypto.subtle.generateKey`) with JWK private key export/parsing to extract the seed.",
-      "reason": "REQ-41 explicitly requires replacing Web Crypto Ed25519 generation with `@noble/ed25519` on the normal path.",
-      "evidence": [
-        "frontend/src/components/settings/ConnectBotWizardModal.tsx (`window.crypto.subtle.generateKey({ name: 'Ed25519' })`, `exportKey('jwk', ...)` and base64url parsing)"
-      ]
-    },
-    {
-      "description": "Console warning/error logging during key generation (e.g., `console.warn(...)` on fallback and `console.error(...)` on failure).",
-      "reason": "REQ-41/constraints focus on changing only the key generation implementation and explicitly call out avoiding new console errors; new logging behavior is not requested in the spec text provided.",
-      "evidence": [
-        "frontend/src/components/settings/ConnectBotWizardModal.tsx (`console.warn('Web Crypto Ed25519 not available...')`, `console.error('Failed to generate keypair:', error)`)"
-      ]
-    }
-  ],
-  "confidence": 0.78,
+  "hallucinated_features": [],
+  "confidence": 0.7,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/components/settings/ConnectBotWizardModal.tsx",
     "project_state.json"

@@ -72,6 +72,17 @@ export default {
                     DEFAULT: 'oklch(var(--card))',
                     foreground: 'oklch(var(--card-foreground))'
                 },
+                emerald: {
+                    DEFAULT: 'oklch(var(--emerald))',
+                    dark: 'oklch(var(--emerald-dark))',
+                    500: '#10b981',
+                    600: '#059669',
+                },
+                charcoal: {
+                    950: '#1a1a1a',
+                    900: '#262626',
+                    800: '#2d2d2d',
+                },
                 profit: 'oklch(var(--profit))',
                 loss: 'oklch(var(--loss))',
             },
@@ -82,7 +93,14 @@ export default {
             },
             boxShadow: {
                 xs: '0 1px 2px 0 rgba(0,0,0,0.05)',
-                glow: '0 0 30px rgba(52,211,153,0.3)',
+                glow: '0 0 30px rgba(16, 185, 129, 0.3)',
+            },
+            backdropBlur: {
+                xs: '2px',
+                sm: '4px',
+                md: '12px',
+                lg: '16px',
+                xl: '24px',
             },
             keyframes: {
                 'accordion-down': {

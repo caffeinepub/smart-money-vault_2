@@ -1,34 +1,136 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T02:21:22.582Z",
+  "generatedAt": "2026-02-20T12:10:15.185Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
+    "total": 14,
     "implemented": 1,
     "items": [
       {
-        "id": "REQ-41",
-        "summary": "Update `frontend/src/components/settings/ConnectBotWizardModal.tsx` so `handleGenerateKeypair` no longer uses Web Crypto Ed25519 and instead generates the Ed25519 keypair using `@noble/ed25519` exactly as follows: `import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);`. Display the private key as a hex string (BOT_PRIVATE_KEY) and keep the public key as a `Uint8Array` for sending to the backend. If `@noble/ed25519` is not available at runtime/build-time, fall back to generating a 32-byte random seed and produce a placeholder derived public key, including the exact comment: `// TODO: Replace with real Ed25519 derivation in production.`. Do not change any other wizard UI steps, blur/copy behavior, warning text, or the existing `linkMutation` call flow.",
+        "id": "REQ-1",
+        "summary": "Implement stable storage for all backend state maps (userProfiles, trades, licenses, botProfiles, auditLog, analyticsEvents, usedNonces, subscriptionTiers, botIdIndex) using either stable type declarations or Pre/Post-Upgrade hooks with serialization to prevent data loss during canister upgrades",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-10",
+        "summary": "Replace the assert statement in storeAnalyticsEvent filter (line 1129) with an if/return pattern to prevent canister traps, allowing graceful error handling instead of stopping the canister",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-11",
+        "summary": "Implement actual storage logic in storeJwt() and storeStrategicVault() functions instead of returning the input unchanged, ensuring these functions persist data correctly",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-12",
+        "summary": "Fix getHeartbeatData() to use the accountId parameter instead of ignoring it and using the caller principal, ensuring heartbeat data is fetched for the requested account",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-13",
+        "summary": "Remove unused 3D dependencies (@react-three/fiber, three, @react-three/cannon) from package.json to reduce bundle size by approximately 500KB, as they are not used in the application",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/package.json"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-14",
+        "summary": "Resolve the build tool inconsistency where package.json references dfx generate but icp.yaml uses the icp CLI, ensuring build configuration is consistent and uses the correct tool",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/package.json"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Implement full Ed25519 signature verification in verifyBotSignature() function (line 287 in main.mo) to cryptographically validate bot signatures using the registered public keys from botProfiles, not just checking nonce freshness and timestamp windows",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Implement full Ed25519 signature verification in check_uplink() function (line 706 in main.mo), replacing the TODO comment and empty signature size check with actual cryptographic verification logic",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Encrypt the Stripe secret key in stripeConfig (line 950) instead of storing it as plaintext in StripeConfiguration, using encryption or delegating to an external secret manager via HTTP outcall to prevent exposure during memory dumps or controller access",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Change Stripe checkout session creation from mode=payment (line 97 in stripe.mo) to mode=subscription with Stripe price_id configuration to support recurring subscription tiers (Free/Diamond Hand/Whale) instead of one-time payments",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Implement Stripe webhooks to handle invoice.paid and customer.subscription.deleted events for subscription lifecycle management, ensuring subscription status updates are processed correctly",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Replace the unsafe Ed25519 key generation fallback in ConnectBotWizardModal.tsx (lines 58-67) with tweetnacl or noble-ed25519 library to generate cryptographically valid key pairs, or block the fallback path with a clear error message if Web Crypto Ed25519 is unavailable",
         "status": "implemented",
         "plannedFiles": [
+          "frontend/package.json",
           "frontend/src/components/settings/ConnectBotWizardModal.tsx"
         ],
         "matchedFiles": [
           "frontend/src/components/settings/ConnectBotWizardModal.tsx"
         ]
+      },
+      {
+        "id": "REQ-8",
+        "summary": "Implement a cleanup timer for the usedNonces map in the backend to prevent unbounded growth by removing expired nonces older than the timestamp window",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-9",
+        "summary": "Remove the duplicate function between saveCallerUserProfile() and update_profile() in the backend, keeping only one implementation to eliminate code duplication",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
     "frontend/src/components/settings/ConnectBotWizardModal.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

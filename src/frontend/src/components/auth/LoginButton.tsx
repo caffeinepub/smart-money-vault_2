@@ -32,7 +32,7 @@ export default function LoginButton() {
       onClick={handleAuth}
       disabled={disabled}
       size="lg"
-      className="min-w-[140px] bg-white/10 font-medium text-white transition-all hover:bg-white/15 disabled:opacity-50"
+      className="min-w-[140px] bg-emerald-500 font-medium text-black transition-all hover:bg-emerald-600 disabled:opacity-50"
     >
       {loginStatus === 'logging-in' ? (
         <>

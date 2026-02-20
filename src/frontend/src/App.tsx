@@ -15,7 +15,7 @@ export default function App() {
   // Show loading state during initialization
   if (isInitializing) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0A0A0A]">
+      <div className="flex h-screen items-center justify-center bg-charcoal-950">
         <Loader2 className="h-8 w-8 animate-spin text-white/40" />
       </div>
     );
@@ -24,10 +24,10 @@ export default function App() {
   // Show minimalist landing screen if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-[#0A0A0A] px-4">
+      <div className="flex h-screen flex-col items-center justify-center bg-charcoal-950 px-4">
         <div className="mb-12 text-center">
           <h1 className="mb-3 text-5xl font-medium tracking-tight text-white">
-            Welcome to the Vault
+            Smart Money Vault
           </h1>
           <p className="text-sm text-white/50">
             Institutional-grade trading intelligence on Internet Computer

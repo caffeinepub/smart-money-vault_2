@@ -31,7 +31,7 @@ export default function ProfileSetupModal() {
 
   return (
     <Dialog open={true}>
-      <DialogContent className="border-white/5 bg-[#000000] sm:max-w-md">
+      <DialogContent className="glass border-white/10 bg-charcoal-900/90 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">Welcome to Smart Money Vault</DialogTitle>
           <DialogDescription className="text-white/60">
@@ -67,7 +67,7 @@ export default function ProfileSetupModal() {
           <Button
             type="submit"
             disabled={!name.trim() || saveProfile.isPending}
-            className="w-full bg-white/10 font-medium text-white hover:bg-white/15"
+            className="w-full bg-emerald-500 font-medium text-black hover:bg-emerald-600"
           >
             {saveProfile.isPending ? (
               <>

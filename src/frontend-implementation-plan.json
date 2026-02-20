@@ -1,25 +1,58 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Connect Bot Wizard Ed25519 keypair generation (@noble/ed25519)",
+  "title": "Fix 5 critical security blockers for mainnet deployment - Frontend Changes",
   "requirements": [
     {
-      "id": "REQ-41",
-      "summary": "Replace Web Crypto Ed25519 keypair generation with @noble/ed25519 in Connect Bot Wizard while preserving all existing wizard behavior.",
+      "id": "REQ-7",
+      "summary": "Replace unsafe Ed25519 key generation fallback with tweetnacl library to ensure cryptographically valid keypairs",
       "acceptanceCriteria": [
-        "In `ConnectBotWizardModal.tsx`, `handleGenerateKeypair` does not call `window.crypto.subtle.generateKey` (or any Web Crypto Ed25519 generation) on the normal path.",
-        "On the normal path, `privateKey` is generated with `ed.utils.randomPrivateKey()` and `publicKey` is derived using `await ed.getPublicKeyAsync(privateKey)` (public key is not independent random bytes).",
-        "The private key displayed and copied is a hex string derived from the generated private key (BOT_PRIVATE_KEY), and the public key remains a `Uint8Array` used by the existing `linkMutation.mutateAsync(keypair.publicKey)` flow.",
-        "If noble is unavailable, the code falls back to a 32-byte random seed and produces a placeholder derived public key, and the source includes the exact comment `// TODO: Replace with real Ed25519 derivation in production.`.",
-        "The modal’s step flow remains unchanged (generate → reveal → link → url → done), and the warning text remains exactly: `Paste this into your Python Bot's .env file as BOT_PRIVATE_KEY. This will not be shown again.`",
-        "The private key input remains blurred by default and copyable, and sensitive data is still cleared on close as currently implemented.",
-        "No new console errors are introduced when generating keys, linking the public key, or saving the bot URL."
+        "tweetnacl or noble-ed25519 library is used as fallback for Ed25519 key generation",
+        "Generated public keys have correct cryptographic relationship to private keys",
+        "If no Ed25519 support is available, user sees clear error message blocking wizard progression"
       ],
       "file_operations": [
         {
+          "path": "frontend/package.json",
+          "operation": "modify",
+          "description": "Add tweetnacl package dependency to support secure Ed25519 key generation fallback when Web Crypto API is unavailable"
+        },
+        {
           "path": "frontend/src/components/settings/ConnectBotWizardModal.tsx",
           "operation": "modify",
-          "description": "Update `handleGenerateKeypair` to generate Ed25519 keys using `@noble/ed25519` exactly as specified (`import * as ed from '@noble/ed25519'; const privateKey = ed.utils.randomPrivateKey(); const publicKey = await ed.getPublicKeyAsync(privateKey);`). Display BOT_PRIVATE_KEY as a hex string derived from `privateKey` (while keeping `publicKey` as `Uint8Array` for the existing `linkMutation.mutateAsync(keypair.publicKey)` flow). Implement a runtime/build-time fallback when noble is unavailable: generate a 32-byte random seed and create a placeholder derived public key, and include the exact comment `// TODO: Replace with real Ed25519 derivation in production.`. Preserve all existing wizard steps, blur/copy behavior, warning text, and close-clearing behavior; avoid introducing new console errors."
+          "description": "Replace the unsafe Ed25519 key generation fallback (lines 58-67) with tweetnacl library implementation. Import tweetnacl, use nacl.sign.keyPair() to generate cryptographically valid keypairs, and ensure the public key has the correct relationship to the private key. If neither Web Crypto nor tweetnacl are available, display a clear error message blocking wizard progression instead of generating broken keys"
+        }
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "summary": "Remove unused 3D dependencies to reduce bundle size by approximately 500KB",
+      "acceptanceCriteria": [
+        "3D dependencies are removed from package.json",
+        "Application builds successfully without these dependencies",
+        "Bundle size is reduced by approximately 500KB"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/package.json",
+          "operation": "modify",
+          "description": "Remove unused 3D dependencies (@react-three/fiber, three, @react-three/cannon) from the dependencies section to reduce bundle size by approximately 500KB"
+        }
+      ]
+    },
+    {
+      "id": "REQ-14",
+      "summary": "Resolve build tool inconsistency between package.json and icp.yaml to use consistent CLI tooling",
+      "acceptanceCriteria": [
+        "Build configuration consistently uses either dfx or icp CLI, not both",
+        "package.json scripts align with icp.yaml configuration",
+        "Build process executes without tool conflicts"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/package.json",
+          "operation": "modify",
+          "description": "Update all scripts referencing 'dfx generate' to use 'icp generate' instead, ensuring consistency with icp.yaml build configuration. Replace dfx commands with corresponding icp CLI commands in build, deploy, and development scripts"
         }
       ]
     }

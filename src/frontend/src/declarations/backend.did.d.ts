@@ -11,6 +11,15 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export type AccountId = string;
+export interface AnalyticsEvent {
+  'id' : [] | [string],
+  'principal' : [] | [Principal],
+  'count' : bigint,
+  'timestamp' : bigint,
+  'elementId' : string,
+  'payload' : [] | [string],
+  'eventType' : EventType,
+}
 export interface AuditEntry {
   'principal' : Principal,
   'action' : string,
@@ -34,6 +43,11 @@ export type Error = { 'InvalidInput' : null } |
   { 'UnknownBotId' : null } |
   { 'MissingBotKey' : null } |
   { 'ReplayDetected' : null };
+export type EventType = { 'Started' : null } |
+  { 'Tour' : null } |
+  { 'Navigation' : null } |
+  { 'Stripe' : null } |
+  { 'Completed' : null };
 export interface HeartbeatData {
   'cycles' : bigint,
   'botStatus' : Status,
@@ -172,10 +186,16 @@ export interface _SERVICE {
   'create_tier' : ActorMethod<[SubscriptionTier], Result_4>,
   'fetchSignals' : ActorMethod<[], SignalFetchResult>,
   'getAllLicenses' : ActorMethod<[], Array<[AccountId, License]>>,
+  'getAnalyticsEvents' : ActorMethod<[bigint], Array<AnalyticsEvent>>,
+  'getAnalyticsEventsForRange' : ActorMethod<
+    [[] | [bigint], [] | [bigint], bigint],
+    Array<AnalyticsEvent>
+  >,
   'getAuditLog' : ActorMethod<[bigint], Array<AuditEntry>>,
   'getBotProfile' : ActorMethod<[], [] | [BotProfile]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getEventTypeClass' : ActorMethod<[EventType], [] | [string]>,
   'getHeartbeatData' : ActorMethod<[AccountId], HeartbeatData>,
   'getLicenseStatus' : ActorMethod<
     [AccountId, Uint8Array, string, Time],
@@ -197,13 +217,16 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setBotUrl' : ActorMethod<[string], Result>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'storeAnalyticsEvent' : ActorMethod<
+    [[] | [string], EventType, string, bigint, [] | [string]],
+    undefined
+  >,
   'storeJwt' : ActorMethod<[string, AccountId], Result_2>,
   'storeStrategicVault' : ActorMethod<[StrategicVault, AccountId], Result_1>,
   'submitTrade' : ActorMethod<[Trade, Uint8Array, string, Time], undefined>,
   'toggle_tier_active' : ActorMethod<[string, boolean], Result>,
   'toggle_uplink' : ActorMethod<[boolean], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
-  'update_profile' : ActorMethod<[UserProfile], undefined>,
   'update_tier' : ActorMethod<[string, SubscriptionTier], Result>,
 }
 export declare const idlService: IDL.ServiceClass;

@@ -121,6 +121,15 @@ export interface BotProfile {
     lastHeartbeat: Time;
     cyclesWarning: boolean;
 }
+export interface AnalyticsEvent {
+    id?: string;
+    principal?: Principal;
+    count: bigint;
+    timestamp: bigint;
+    elementId: string;
+    payload?: string;
+    eventType: EventType;
+}
 export interface Trade {
     entryTimestamp: Time;
     accountId: AccountId;
@@ -201,6 +210,13 @@ export enum Error_ {
     MissingBotKey = "MissingBotKey",
     ReplayDetected = "ReplayDetected"
 }
+export enum EventType {
+    Started = "Started",
+    Tour = "Tour",
+    Navigation = "Navigation",
+    Stripe = "Stripe",
+    Completed = "Completed"
+}
 export enum Status {
     SUSPENDED = "SUSPENDED",
     ACTIVE = "ACTIVE"
@@ -231,11 +247,14 @@ export interface backendInterface {
     create_tier(tier: SubscriptionTier): Promise<Result_4>;
     fetchSignals(): Promise<SignalFetchResult>;
     getAllLicenses(): Promise<Array<[AccountId, License]>>;
+    getAnalyticsEvents(limit: bigint): Promise<Array<AnalyticsEvent>>;
+    getAnalyticsEventsForRange(startTime: bigint | null, endTime: bigint | null, limit: bigint): Promise<Array<AnalyticsEvent>>;
     getAuditLog(limit: bigint): Promise<Array<AuditEntry>>;
     getBotProfile(): Promise<BotProfile | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getHeartbeatData(_accountId: AccountId): Promise<HeartbeatData>;
+    getEventTypeClass(eventType: EventType): Promise<string | null>;
+    getHeartbeatData(accountId: AccountId): Promise<HeartbeatData>;
     getLicenseStatus(accountId: AccountId, signature: Uint8Array, nonce: string, timestamp: Time): Promise<boolean>;
     getMyLicenseStatus(): Promise<License | null>;
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
@@ -250,12 +269,12 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setBotUrl(url: string): Promise<Result>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
+    storeAnalyticsEvent(eventId: string | null, eventType: EventType, elementId: string, count: bigint, payload: string | null): Promise<void>;
     storeJwt(jwt: string, accountId: AccountId): Promise<Result_2>;
     storeStrategicVault(vaultData: StrategicVault, _accountId: AccountId): Promise<Result_1>;
     submitTrade(trade: Trade, signature: Uint8Array, nonce: string, timestamp: Time): Promise<void>;
     toggle_tier_active(id: string, active: boolean): Promise<Result>;
     toggle_uplink(state: boolean): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
-    update_profile(profile: UserProfile): Promise<void>;
     update_tier(id: string, updated: SubscriptionTier): Promise<Result>;
 }
