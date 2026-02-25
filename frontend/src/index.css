@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --radius: 0.5rem;
+        
+        /* Cupertino Quant - Deep Charcoal Terminal Aesthetic */
+        --background: 0.02 0 0;
+        --foreground: 0.98 0 0;
+        --card: 0.07 0 0;
+        --card-foreground: 0.98 0 0;
+        --popover: 0.07 0 0;
+        --popover-foreground: 0.98 0 0;
+        --primary: 0.98 0 0;
+        --primary-foreground: 0.02 0 0;
+        --secondary: 0.10 0 0;
+        --secondary-foreground: 0.98 0 0;
+        --muted: 0.10 0 0;
+        --muted-foreground: 0.5 0 0;
+        --accent: 0.10 0 0;
+        --accent-foreground: 0.98 0 0;
+        --destructive: 0.64 0.22 25;
+        --destructive-foreground: 0.98 0 0;
+        --border: 0.10 0 0;
+        --input: 1 0 0 / 10%;
+        --ring: 0.5 0 0;
+        
+        /* Cupertino Quant Accents - Electric Emerald (#10b981, #059669) */
+        --emerald: 0.65 0.15 150;
+        --emerald-dark: 0.55 0.15 150;
+        --profit: 0.65 0.15 150;
+        --loss: 0.64 0.22 25;
+        
+        /* Charcoal backgrounds */
+        --charcoal-950: 0.02 0 0;
+        --charcoal-900: 0.05 0 0;
+        --charcoal-800: 0.07 0 0;
+    }
+
+    .dark {
+        /* Cupertino Quant - #050505 background, #121212 cards, #1A1A1A borders */
+        --background: 0.02 0 0;
+        --foreground: 0.98 0 0;
+        --card: 0.07 0 0;
+        --card-foreground: 0.98 0 0;
+        --popover: 0.07 0 0;
+        --popover-foreground: 0.98 0 0;
+        --primary: 0.98 0 0;
+        --primary-foreground: 0.02 0 0;
+        --secondary: 0.10 0 0;
+        --secondary-foreground: 0.98 0 0;
+        --muted: 0.10 0 0;
+        --muted-foreground: 0.5 0 0;
+        --accent: 0.10 0 0;
+        --accent-foreground: 0.98 0 0;
+        --destructive: 0.64 0.22 25;
+        --destructive-foreground: 0.98 0 0;
+        --border: 0.10 0 0;
+        --input: 1 0 0 / 10%;
+        --ring: 0.5 0 0;
+        
+        /* Emerald accents */
+        --emerald: 0.65 0.15 150;
+        --emerald-dark: 0.55 0.15 150;
+        --profit: 0.65 0.15 150;
+        --loss: 0.64 0.22 25;
+        
+        /* Charcoal backgrounds */
+        --charcoal-950: 0.02 0 0;
+        --charcoal-900: 0.05 0 0;
+        --charcoal-800: 0.07 0 0;
+    }
+
+    * {
+        @apply border-border;
+    }
+    
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    }
+}
+
+/* Glassmorphism utility */
+.glass {
+    background: oklch(0.07 0 0 / 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* Monospace for code/data */
+.font-mono {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}

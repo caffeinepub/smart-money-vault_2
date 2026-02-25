@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Smart Money Vault: Crypto trading platform with bot integration, user profiles, Stripe subscriptions, and audit logging. Critical security fixes in progress: stable storage, Ed25519 signature verification, encrypted Stripe keys, subscription mode, and secure key generation.",
+  "architectural_notes": [
+    "Backend uses Internet Computer canisters with stable storage for persistence across upgrades",
+    "Ed25519 signature verification for bot authentication and uplink communication",
+    "Stripe integration with subscription mode for recurring payments (Free/Diamond Hand/Whale tiers)",
+    "Encrypted storage for Stripe secret keys to prevent exposure",
+    "ConnectBotWizard uses tweetnacl library for secure Ed25519 key generation",
+    "Cleanup timer for usedNonces map to prevent unbounded growth",
+    "Python bot integration endpoint: https://smv-production.up.railway.app/api/v1/signals"
+  ],
+  "known_issues": [],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-replace-the-unsafe-ed25519-key-generation-fallback-in-connectbotwizardmodal-tsx-lines-58-67-with-tweetnacl-or-noble-ed25519-library-to-generate-cryptographically-valid-key-pairs-or-block-the-fallback-path-with-a-clear-error-message-if-web-crypto-ed25519-is-unavailable",
+      "title": "Replace the unsafe Ed25519 key generation fallback in ConnectBotWizardModal.tsx (lines 58-67) with tweetnacl or noble-ed25519 library to generate cryptographically valid key pairs, or block the fallback path with a clear error message if Web Crypto Ed25519 is unavailable",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Implement stable storage for all backend state maps (userProfiles, trades, licenses, botProfiles, auditLog, analyticsEvents, usedNonces, subscriptionTiers, botIdIndex) using either stable type declarations or Pre/Post-Upgrade hooks with serialization to prevent data loss during canister upgrades",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Implement full Ed25519 signature verification in verifyBotSignature() function (line 287 in main.mo) to cryptographically validate bot signatures using the registered public keys from botProfiles, not just checking nonce freshness and timestamp windows",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Implement full Ed25519 signature verification in check_uplink() function (line 706 in main.mo), replacing the TODO comment and empty signature size check with actual cryptographic verification logic",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Encrypt the Stripe secret key in stripeConfig (line 950) instead of storing it as plaintext in StripeConfiguration, using encryption or delegating to an external secret manager via HTTP outcall to prevent exposure during memory dumps or controller access",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Change Stripe checkout session creation from mode=payment (line 97 in stripe.mo) to mode=subscription with Stripe price_id configuration to support recurring subscription tiers (Free/Diamond Hand/Whale) instead of one-time payments",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Implement Stripe webhooks to handle invoice.paid and customer.subscription.deleted events for subscription lifecycle management, ensuring subscription status updates are processed correctly",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Implement a cleanup timer for the usedNonces map in the backend to prevent unbounded growth by removing expired nonces older than the timestamp window",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Remove the duplicate function between saveCallerUserProfile() and update_profile() in the backend, keeping only one implementation to eliminate code duplication",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Replace the assert statement in storeAnalyticsEvent filter (line 1129) with an if/return pattern to prevent canister traps, allowing graceful error handling instead of stopping the canister",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Implement actual storage logic in storeJwt() and storeStrategicVault() functions instead of returning the input unchanged, ensuring these functions persist data correctly",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Fix getHeartbeatData() to use the accountId parameter instead of ignoring it and using the caller principal, ensuring heartbeat data is fetched for the requested account",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Remove unused 3D dependencies (@react-three/fiber, three, @react-three/cannon) from package.json to reduce bundle size by approximately 500KB, as they are not used in the application",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Resolve the build tool inconsistency where package.json references dfx generate but icp.yaml uses the icp CLI, ensuring build configuration is consistent and uses the correct tool",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Smart Money Vault",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

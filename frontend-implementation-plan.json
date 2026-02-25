@@ -1,0 +1,60 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Fix 5 critical security blockers for mainnet deployment - Frontend Changes",
+  "requirements": [
+    {
+      "id": "REQ-7",
+      "summary": "Replace unsafe Ed25519 key generation fallback with tweetnacl library to ensure cryptographically valid keypairs",
+      "acceptanceCriteria": [
+        "tweetnacl or noble-ed25519 library is used as fallback for Ed25519 key generation",
+        "Generated public keys have correct cryptographic relationship to private keys",
+        "If no Ed25519 support is available, user sees clear error message blocking wizard progression"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/package.json",
+          "operation": "modify",
+          "description": "Add tweetnacl package dependency to support secure Ed25519 key generation fallback when Web Crypto API is unavailable"
+        },
+        {
+          "path": "frontend/src/components/settings/ConnectBotWizardModal.tsx",
+          "operation": "modify",
+          "description": "Replace the unsafe Ed25519 key generation fallback (lines 58-67) with tweetnacl library implementation. Import tweetnacl, use nacl.sign.keyPair() to generate cryptographically valid keypairs, and ensure the public key has the correct relationship to the private key. If neither Web Crypto nor tweetnacl are available, display a clear error message blocking wizard progression instead of generating broken keys"
+        }
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "summary": "Remove unused 3D dependencies to reduce bundle size by approximately 500KB",
+      "acceptanceCriteria": [
+        "3D dependencies are removed from package.json",
+        "Application builds successfully without these dependencies",
+        "Bundle size is reduced by approximately 500KB"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/package.json",
+          "operation": "modify",
+          "description": "Remove unused 3D dependencies (@react-three/fiber, three, @react-three/cannon) from the dependencies section to reduce bundle size by approximately 500KB"
+        }
+      ]
+    },
+    {
+      "id": "REQ-14",
+      "summary": "Resolve build tool inconsistency between package.json and icp.yaml to use consistent CLI tooling",
+      "acceptanceCriteria": [
+        "Build configuration consistently uses either dfx or icp CLI, not both",
+        "package.json scripts align with icp.yaml configuration",
+        "Build process executes without tool conflicts"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/package.json",
+          "operation": "modify",
+          "description": "Update all scripts referencing 'dfx generate' to use 'icp generate' instead, ensuring consistency with icp.yaml build configuration. Replace dfx commands with corresponding icp CLI commands in build, deploy, and development scripts"
+        }
+      ]
+    }
+  ]
+}

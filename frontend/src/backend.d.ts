@@ -1,0 +1,280 @@
+import type { Principal } from "@icp-sdk/core/principal";
+export interface Some<T> {
+    __kind__: "Some";
+    value: T;
+}
+export interface None {
+    __kind__: "None";
+}
+export type Option<T> = Some<T> | None;
+export type Result_2 = {
+    __kind__: "ok";
+    ok: JwtToken;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export type Time = bigint;
+export interface StrategyBundle {
+    entryStrategy: bigint;
+    paths: Array<StrategyPath>;
+    items: Array<Strategy>;
+    inputSymbol: Symbol;
+    outputSymbol: Symbol;
+}
+export interface AuditEntry {
+    principal: Principal;
+    action: string;
+    timestamp: Time;
+    details: string;
+}
+export type Result_1 = {
+    __kind__: "ok";
+    ok: StrategicVault;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
+export interface HeartbeatData {
+    cycles: bigint;
+    botStatus: Status;
+    lastHeartbeatAt: Time;
+    cyclesWarning?: string;
+    verifiedLicense: boolean;
+}
+export interface StrategicVault {
+    jwt: string;
+    strategies: Array<StrategyBundle>;
+}
+export type Result_4 = {
+    __kind__: "ok";
+    ok: SubscriptionTier;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
+export type AccountId = string;
+export interface License {
+    active: boolean;
+    createdAt: Time;
+    updatedAt?: Time;
+    revokedAt?: Time;
+}
+export type SignalFetchResult = {
+    __kind__: "ok";
+    ok: {
+        body: string;
+        timestamp: bigint;
+        statusCode: bigint;
+    };
+} | {
+    __kind__: "err";
+    err: BotError;
+};
+export interface TransformationInput {
+    context: Uint8Array;
+    response: http_request_result;
+}
+export interface StrategyPath {
+    deployedAt: Time;
+    items: Array<Strategy>;
+    pathSymbols: Array<Symbol>;
+}
+export type StripeSessionStatus = {
+    __kind__: "completed";
+    completed: {
+        userPrincipal?: string;
+        response: string;
+    };
+} | {
+    __kind__: "failed";
+    failed: {
+        error: string;
+    };
+};
+export interface StripeConfiguration {
+    allowedCountries: Array<string>;
+    secretKey: string;
+}
+export interface Strategy {
+    entryTime: Time;
+    deployedAt: Time;
+    name: string;
+    side: TradeSide;
+    priceFeed: Symbol;
+}
+export interface Symbol {
+    token: string;
+    feed: string;
+    currency: string;
+    exchange: string;
+}
+export interface BotProfile {
+    publicKey?: Uint8Array;
+    uplinkStatus: boolean;
+    botUrl?: string;
+    lastHeartbeat: Time;
+    cyclesWarning: boolean;
+}
+export interface AnalyticsEvent {
+    id?: string;
+    principal?: Principal;
+    count: bigint;
+    timestamp: bigint;
+    elementId: string;
+    payload?: string;
+    eventType: EventType;
+}
+export interface Trade {
+    entryTimestamp: Time;
+    accountId: AccountId;
+    instrument: string;
+    side: TradeSide;
+    size: number;
+    tradeId: string;
+    exitTimestamp?: Time;
+    entryPrice: number;
+    exitPrice?: number;
+}
+export interface http_header {
+    value: string;
+    name: string;
+}
+export interface http_request_result {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export interface SubscriptionTier {
+    id: string;
+    features: Array<string>;
+    active: boolean;
+    maxApiCalls: bigint;
+    name: string;
+    maxBots: bigint;
+    priceInCents: bigint;
+}
+export interface JwtToken {
+    jwt: string;
+    accountId: AccountId;
+}
+export interface ShoppingItem {
+    productName: string;
+    currency: string;
+    quantity: bigint;
+    priceInCents: bigint;
+    productDescription: string;
+}
+export type Result_3 = {
+    __kind__: "ok";
+    ok: Array<SubscriptionTier>;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
+export type Result = {
+    __kind__: "ok";
+    ok: string;
+} | {
+    __kind__: "err";
+    err: Error_;
+};
+export type BotError = {
+    __kind__: "InvalidUrl";
+    InvalidUrl: string;
+} | {
+    __kind__: "FetchFailed";
+    FetchFailed: string;
+};
+export interface UserProfile {
+    timezone?: string;
+    botPublicKey?: Uint8Array;
+    notificationsEnabled: boolean;
+    accountId?: string;
+    name: string;
+    bot_id?: string;
+    planTier?: Variant_Pro_Free_Whale;
+}
+export enum Error_ {
+    InvalidInput = "InvalidInput",
+    LicenseInactive = "LicenseInactive",
+    TimestampOutOfWindow = "TimestampOutOfWindow",
+    InvalidSignature = "InvalidSignature",
+    Unauthorized = "Unauthorized",
+    UnknownBotId = "UnknownBotId",
+    MissingBotKey = "MissingBotKey",
+    ReplayDetected = "ReplayDetected"
+}
+export enum EventType {
+    Started = "Started",
+    Tour = "Tour",
+    Navigation = "Navigation",
+    Stripe = "Stripe",
+    Completed = "Completed"
+}
+export enum Status {
+    SUSPENDED = "SUSPENDED",
+    ACTIVE = "ACTIVE"
+}
+export enum TradeSide {
+    buy = "buy",
+    sell = "sell"
+}
+export enum UplinkStatus {
+    EXECUTE = "EXECUTE",
+    STANDBY = "STANDBY"
+}
+export enum UserRole {
+    admin = "admin",
+    user = "user",
+    guest = "guest"
+}
+export enum Variant_Pro_Free_Whale {
+    Pro = "Pro",
+    Free = "Free",
+    Whale = "Whale"
+}
+export interface backendInterface {
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    check_uplink(bot_id: string, signature: Uint8Array): Promise<UplinkStatus>;
+    createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
+    createOrUpdateLicense(accountId: AccountId, active: boolean): Promise<void>;
+    create_tier(tier: SubscriptionTier): Promise<Result_4>;
+    fetchSignals(): Promise<SignalFetchResult>;
+    getAllLicenses(): Promise<Array<[AccountId, License]>>;
+    getAnalyticsEvents(limit: bigint): Promise<Array<AnalyticsEvent>>;
+    getAnalyticsEventsForRange(startTime: bigint | null, endTime: bigint | null, limit: bigint): Promise<Array<AnalyticsEvent>>;
+    getAuditLog(limit: bigint): Promise<Array<AuditEntry>>;
+    getBotProfile(): Promise<BotProfile | null>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
+    getCallerUserRole(): Promise<UserRole>;
+    getEventTypeClass(eventType: EventType): Promise<string | null>;
+    getHeartbeatData(accountId: AccountId): Promise<HeartbeatData>;
+    getLicenseStatus(accountId: AccountId, signature: Uint8Array, nonce: string, timestamp: Time): Promise<boolean>;
+    getMyLicenseStatus(): Promise<License | null>;
+    getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
+    getTradesPaginated(accountId: AccountId | null, startTime: Time | null, endTime: Time | null, start: bigint, limit: bigint): Promise<Array<Trade>>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    get_tier(id: string): Promise<Result_4>;
+    isCallerAdmin(): Promise<boolean>;
+    isStripeConfigured(): Promise<boolean>;
+    list_tiers(): Promise<Result_3>;
+    registerBotPublicKey(publicKey: Uint8Array): Promise<void>;
+    revokeLicense(accountId: AccountId): Promise<void>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setBotUrl(url: string): Promise<Result>;
+    setStripeConfiguration(config: StripeConfiguration): Promise<void>;
+    storeAnalyticsEvent(eventId: string | null, eventType: EventType, elementId: string, count: bigint, payload: string | null): Promise<void>;
+    storeJwt(jwt: string, accountId: AccountId): Promise<Result_2>;
+    storeStrategicVault(vaultData: StrategicVault, _accountId: AccountId): Promise<Result_1>;
+    submitTrade(trade: Trade, signature: Uint8Array, nonce: string, timestamp: Time): Promise<void>;
+    toggle_tier_active(id: string, active: boolean): Promise<Result>;
+    toggle_uplink(state: boolean): Promise<void>;
+    transform(input: TransformationInput): Promise<TransformationOutput>;
+    update_tier(id: string, updated: SubscriptionTier): Promise<Result>;
+}
