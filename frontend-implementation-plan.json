@@ -1,6 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add user principal as hardcoded admin",
+  "title": "Replace access-control.mo with updated owner-bypass logic and redeploy",
   "requirements": []
 }

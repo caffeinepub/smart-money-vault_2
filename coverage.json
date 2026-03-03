@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-03-02T23:51:20.168Z",
+  "generatedAt": "2026-03-03T00:10:27.237Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -12,7 +12,7 @@
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add the principal `gyojt-gsv7l-g3oqx-3m7xb-w7cmh-nck6r-so6sn-fc7jp-ymofr-fgq6n-eae` to the hardcoded admin principals list in the backend so that `AccessControl.isAdmin` returns true for this user.",
+        "summary": "Replace the contents of backend/access-control.mo with exactly the following code provided by the user:\n\n```\nimport Map \"mo:core/Map\";\nimport Principal \"mo:core/Principal\";\nimport Runtime \"mo:core/Runtime\";\n\nmodule {\n  // Hardcoded owner principal — always has admin role regardless of token\n  let OWNER_PRINCIPAL : Principal =\nPrincipal.fromText(\"gyojt-gsv7l-g3oqx-3m7xb-w7cmh-nck6r-so6sn-fc7jp-ymofr-fgq6n-eae\");\n\n  public type UserRole = {\n    #admin;\n    #user;\n    #guest;\n  };\n\n  public type AccessControlState = {\n    var adminAssigned : Bool;\n    userRoles : Map.Map<Principal, UserRole>;\n  };\n\n  public func initState() : AccessControlState {\n    {\n      var adminAssigned = false;\n      userRoles = Map.empty<Principal, UserRole>();\n    };\n  };\n\n  public func initialize(state : AccessControlState, caller : Principal, adminToken :\nText, userProvidedToken : Text) {\n    if (caller.isAnonymous()) { return };\n    switch (state.userRoles.get(caller)) {\n      case (?_) {};\n      case (null) {\n        if (caller == OWNER_PRINCIPAL) {\n          state.userRoles.add(caller, #admin);\n          state.adminAssigned := true;\n        } else if (not state.adminAssigned and userProvidedToken == adminToken) {\n          state.userRoles.add(caller, #admin);\n          state.adminAssigned := true;\n        } else {\n          state.userRoles.add(caller, #user);\n        };\n      };\n    };\n  };\n\n  public func getUserRole(state : AccessControlState, caller : Principal) : UserRole {\n    if (caller.isAnonymous()) { return #guest };\n    if (caller == OWNER_PRINCIPAL) { return #admin };\n    switch (state.userRoles.get(caller)) {\n      case (?role) { role };\n      case (null) {\n        Runtime.trap(\"User is not registered\");\n      };\n    };\n  };\n\n  public func assignRole(state : AccessControlState, caller : Principal, user :\nPrincipal, role : UserRole) {\n    if (not (isAdmin(state, caller))) {\n      Runtime.trap(\"Unauthorized: Only admins can assign user roles\");\n    };\n    state.userRoles.add(user, role);\n  };\n\n  public func hasPermission(state : AccessControlState, caller : Principal,\nrequiredRole : UserRole) : Bool {\n    if (caller == OWNER_PRINCIPAL) { return true };\n    let userRole = getUserRole(state, caller);\n    if (userRole == #admin or requiredRole == #guest) { true } else { userRole ==\nrequiredRole };\n  };\n\n  public func isAdmin(state : AccessControlState, caller : Principal) : Bool {\n    if (caller == OWNER_PRINCIPAL) { return true };\n    getUserRole(state, caller) == #admin;\n  };\n};\n```\n\nThe key changes from the previous version are:\n- `getUserRole` now returns `#admin` immediately for `OWNER_PRINCIPAL` before checking the userRoles map, so the owner always receives the admin role even if not yet registered.\n- `hasPermission` now returns `true` immediately for `OWNER_PRINCIPAL` before any other role checks.\n- `isAdmin` continues to short-circuit for `OWNER_PRINCIPAL` as before.\n- The hardcoded owner principal is `gyojt-gsv7l-g3oqx-3m7xb-w7cmh-nck6r-so6sn-fc7jp-ymofr-fgq6n-eae`.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
@@ -20,10 +20,7 @@
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
-    "build-template/README.md",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
