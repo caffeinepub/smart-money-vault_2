@@ -1,26 +1,4 @@
 {
   "kind": "feature_evidence_report",
-  "features": [
-    {
-      "featureId": "feature-replace-the-unsafe-ed25519-key-generation-fallback-in-connectbotwizardmodal-tsx-lines-58-67-with-tweetnacl-or-noble-ed25519-library-to-generate-cryptographically-valid-key-pairs-or-block-the-fallback-path-with-a-clear-error-message-if-web-crypto-ed25519-is-unavailable",
-      "featureTitle": "Replace the unsafe Ed25519 key generation fallback in ConnectBotWizardModal.tsx (lines 58-67) with tweetnacl or noble-ed25519 library to generate cryptographically valid key pairs, or block the fallback path with a clear error message if Web Crypto Ed25519 is unavailable",
-      "files": [
-        "frontend/src/components/settings/ConnectBotWizardModal.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "http-outcalls@3.0.0",
-        "stripe@3.0.0"
-      ],
-      "testIds": [
-        "REQ-7"
-      ],
-      "confidence": "high"
-    }
-  ]
+  "features": []
 }

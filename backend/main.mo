@@ -14,9 +14,7 @@ import Stripe "stripe/stripe";
 import Nat "mo:core/Nat";
 import Float "mo:core/Float";
 import Char "mo:core/Char";
-import Migration "migration";
 
-(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);

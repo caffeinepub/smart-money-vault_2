@@ -1,277 +1,38 @@
 {
   "kind": "build_request",
-  "title": "Fix 5 critical security blockers for mainnet deployment",
+  "title": "Add user principal as hardcoded admin",
   "projectName": "Smart Money Vault",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement stable storage for all backend state maps (userProfiles, trades, licenses, botProfiles, auditLog, analyticsEvents, usedNonces, subscriptionTiers, botIdIndex) using either stable type declarations or Pre/Post-Upgrade hooks with serialization to prevent data loss during canister upgrades",
+      "text": "Add the principal `gyojt-gsv7l-g3oqx-3m7xb-w7cmh-nck6r-so6sn-fc7jp-ymofr-fgq6n-eae` to the hardcoded admin principals list in the backend so that `AccessControl.isAdmin` returns true for this user.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-8"
+          "msg-user-principal"
         ],
         "quotes": [
-          "Alle Maps (userProfiles, trades, licenses, botProfiles, auditLog, analyticsEvents, usedNonces, subscriptionTiers, botIdIndex) sind nicht stable. Ein Canister-Upgrade löscht ALLE Daten."
+          "i logged in as gyojt-gsv7l-g3oqx-3m7xb-w7cmh-nck6r-so6sn-fc7jp-ymofr-fgq6n-eae"
         ]
       },
       "acceptanceCriteria": [
-        "All state maps are declared as stable or serialized in preupgrade/postupgrade hooks",
-        "Canister upgrades preserve all existing data without loss",
-        "State recovery is tested after upgrade simulation"
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "text": "Implement full Ed25519 signature verification in verifyBotSignature() function (line 287 in main.mo) to cryptographically validate bot signatures using the registered public keys from botProfiles, not just checking nonce freshness and timestamp windows",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "verifyBotSignature() in main.mo (Zeile 287) prüft nur Nonce-Freshness und Timestamp-Window, verifiziert aber nie die eigentliche Signatur. Jeder der einen gültigen Nonce+Timestamp sendet kann Trades submitten."
-        ]
-      },
-      "acceptanceCriteria": [
-        "verifyBotSignature() performs cryptographic Ed25519 signature verification against registered public key",
-        "Invalid signatures are rejected even with valid nonce and timestamp",
-        "Only requests with valid Ed25519 signatures from registered bots can submit trades"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Implement full Ed25519 signature verification in check_uplink() function (line 706 in main.mo), replacing the TODO comment and empty signature size check with actual cryptographic verification logic",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "Ebenso check_uplink() (Zeile 706): // TODO Phase 2: Implement full Ed25519 signature verification — Signature-Blob wird nur auf size() > 0 geprüft."
-        ]
-      },
-      "acceptanceCriteria": [
-        "check_uplink() performs full Ed25519 signature verification",
-        "TODO comment is removed and replaced with working verification code",
-        "Uplink status changes require valid cryptographic signatures"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Encrypt the Stripe secret key in stripeConfig (line 950) instead of storing it as plaintext in StripeConfiguration, using encryption or delegating to an external secret manager via HTTP outcall to prevent exposure during memory dumps or controller access",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "stripeConfig (Zeile 950) speichert den Stripe secretKey als Klartext in StripeConfiguration. Bei einem Memory-Dump oder Controller-Zugriff ist der Key exposed."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Stripe secret key is encrypted before storage in canister memory",
-        "Secret key cannot be retrieved in plaintext from memory dumps",
-        "Decryption mechanism works correctly for Stripe API calls"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Change Stripe checkout session creation from mode=payment (line 97 in stripe.mo) to mode=subscription with Stripe price_id configuration to support recurring subscription tiers (Free/Diamond Hand/Whale) instead of one-time payments",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "stripe.mo Zeile 97 setzt mode=payment (Einmalzahlung). Die Subscription-Tiers (Free/Diamond Hand/Whale) suggerieren aber wiederkehrende Abos."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Stripe checkout sessions use mode=subscription instead of mode=payment",
-        "Subscription tiers reference Stripe price_id instead of inline price_data",
-        "Checkout flow creates recurring subscriptions not one-time payments"
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Implement Stripe webhooks to handle invoice.paid and customer.subscription.deleted events for subscription lifecycle management, ensuring subscription status updates are processed correctly",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "mode=subscription mit Stripe price_id statt inline price_data verwenden. Webhook für invoice.paid/customer.subscription.deleted implementieren."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend endpoint handles Stripe webhook events",
-        "invoice.paid events activate or renew user subscriptions",
-        "customer.subscription.deleted events deactivate user subscriptions",
-        "Webhook signature verification is implemented"
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Replace the unsafe Ed25519 key generation fallback in ConnectBotWizardModal.tsx (lines 58-67) with tweetnacl or noble-ed25519 library to generate cryptographically valid key pairs, or block the fallback path with a clear error message if Web Crypto Ed25519 is unavailable",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "ConnectBotWizardModal.tsx Zeile 58-67: Wenn Web Crypto Ed25519 nicht verfügbar ist, werden zwei unabhängige Random-Arrays als 'Private Key' und 'Public Key' generiert. Der Public Key hat keine kryptographische Beziehung zum Private Key — die Signatur-Chain ist gebrochen."
-        ]
-      },
-      "acceptanceCriteria": [
-        "tweetnacl or noble-ed25519 library is used as fallback for Ed25519 key generation",
-        "Generated public keys have correct cryptographic relationship to private keys",
-        "If no Ed25519 support is available, user sees clear error message blocking wizard progression"
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "text": "Implement a cleanup timer for the usedNonces map in the backend to prevent unbounded growth by removing expired nonces older than the timestamp window",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "usedNonces Map wächst unbegrenzt — braucht Cleanup-Timer"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Periodic timer removes expired nonces from usedNonces map",
-        "Map size does not grow indefinitely over time",
-        "Cleanup only removes nonces outside the valid timestamp window"
-      ]
-    },
-    {
-      "id": "REQ-9",
-      "text": "Remove the duplicate function between saveCallerUserProfile() and update_profile() in the backend, keeping only one implementation to eliminate code duplication",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "saveCallerUserProfile() und update_profile() sind identisch — eine löschen"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Only one profile update function exists in the backend",
-        "All callers reference the single implementation",
-        "No functional regressions in profile update operations"
-      ]
-    },
-    {
-      "id": "REQ-10",
-      "text": "Replace the assert statement in storeAnalyticsEvent filter (line 1129) with an if/return pattern to prevent canister traps, allowing graceful error handling instead of stopping the canister",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "assert in storeAnalyticsEvent Filter (Zeile 1129) — kann den Canister trappen statt zu filtern, assert durch if/return ersetzen"
-        ]
-      },
-      "acceptanceCriteria": [
-        "assert statement is replaced with if condition and early return",
-        "Invalid analytics events are filtered without trapping the canister",
-        "Analytics event storage continues to function correctly"
-      ]
-    },
-    {
-      "id": "REQ-11",
-      "text": "Implement actual storage logic in storeJwt() and storeStrategicVault() functions instead of returning the input unchanged, ensuring these functions persist data correctly",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "storeJwt() und storeStrategicVault() speichern nichts — geben nur Input zurück"
-        ]
-      },
-      "acceptanceCriteria": [
-        "storeJwt() persists JWT data to backend storage",
-        "storeStrategicVault() persists vault configuration to backend storage",
-        "Stored data can be retrieved in subsequent calls"
-      ]
-    },
-    {
-      "id": "REQ-12",
-      "text": "Fix getHeartbeatData() to use the accountId parameter instead of ignoring it and using the caller principal, ensuring heartbeat data is fetched for the requested account",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "getHeartbeatData ignoriert den accountId Parameter — nutzt caller statt accountId"
-        ]
-      },
-      "acceptanceCriteria": [
-        "getHeartbeatData() uses the accountId parameter to fetch data",
-        "Heartbeat data is returned for the specified accountId, not the caller",
-        "Function behavior matches its parameter signature"
-      ]
-    },
-    {
-      "id": "REQ-13",
-      "text": "Remove unused 3D dependencies (@react-three/fiber, three, @react-three/cannon) from package.json to reduce bundle size by approximately 500KB, as they are not used in the application",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "Unbenutzte 3D-Dependencies (@react-three/fiber, three, @react-three/cannon) — ~500KB Bundle-Bloat"
-        ]
-      },
-      "acceptanceCriteria": [
-        "3D dependencies are removed from package.json",
-        "Application builds successfully without these dependencies",
-        "Bundle size is reduced by approximately 500KB"
-      ]
-    },
-    {
-      "id": "REQ-14",
-      "text": "Resolve the build tool inconsistency where package.json references dfx generate but icp.yaml uses the icp CLI, ensuring build configuration is consistent and uses the correct tool",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-8"
-        ],
-        "quotes": [
-          "package.json referenziert dfx generate aber icp.yaml nutzt icp CLI — Build-Tool-Inkonsistenz"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Build configuration consistently uses either dfx or icp CLI, not both",
-        "package.json scripts align with icp.yaml configuration",
-        "Build process executes without tool conflicts"
+        "The principal `gyojt-gsv7l-g3oqx-3m7xb-w7cmh-nck6r-so6sn-fc7jp-ymofr-fgq6n-eae` is included in the hardcoded admin principals array alongside the existing two admin principals.",
+        "`AccessControl.isAdmin` returns true when called with this principal.",
+        "All previously hardcoded admin principals remain in the list and are not removed.",
+        "No other backend logic is changed."
       ]
     }
   ],
   "constraints": [
-    "Maintain single-actor architecture in backend/main.mo",
-    "Do not modify immutable frontend paths: useInternetIdentity.ts, useInternetIdentity.tsx, useActor.ts, main.tsx, components/ui",
-    "Preserve existing Railway Python bot integration endpoint: https://smv-production.up.railway.app/api/v1/signals",
-    "Ensure all changes are backwards compatible with existing user data",
-    "Do not break existing subscription tier structure (Free/Diamond Hand/Whale)"
+    "Preserve all existing hardcoded admin principals: `6vouu-wm3zs-nkf25-drcd4-36xid-4a6ia-tldfs-xjk7v-hs7hi-ykijd-6ae` and `5ib3p-enfoo-cr5qf-yezch-xspls-gvmwu-qbhlx-u63dj-xqh47-slru2-qqe`.",
+    "Do not modify any frontend immutable paths.",
+    "Do not change any other backend logic, stable storage, or public methods."
   ],
   "nonGoals": [
-    "Adding new subscription tiers beyond existing Free/Diamond Hand/Whale",
-    "Implementing multi-actor backend architecture",
-    "Changing the React/Tailwind/Shadcn frontend stack",
-    "Adding new 3D visualization features",
-    "Modifying the Cupertino Quant design system colors or typography",
-    "Changing the Internet Identity authentication flow"
+    "Changing the subscription or license status of the user.",
+    "Adding dynamic admin management via canister calls.",
+    "Any frontend changes."
   ],
   "imageRequirements": {
     "required": [],
